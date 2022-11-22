@@ -2,9 +2,8 @@
 
 #include "ACMP.h"
 
-void generate_sample_list(const std::string &dense_folder, std::vector<Problem> &problems) {
-    std::string cluster_list_path = dense_folder + std::string("/pair.txt");
-
+std::vector<Problem> generate_sample_list(const std::string cluster_list_path) {
+    std::vector<Problem> problems;
     problems.clear();
 
     std::ifstream file(cluster_list_path);
@@ -30,14 +29,16 @@ void generate_sample_list(const std::string &dense_folder, std::vector<Problem> 
         }
         problems.push_back(problem);
     }
+
+    return problems;
 }
 
 void process_problem(
-    const std::string &dense_folder,
-    const Problem &problem,
+    const std::string dense_folder,
+    const Problem problem,
     bool geom_consistency,
     bool planar_prior,
-    bool multi_geometrty = false) {
+    bool multi_geometrty) {
     std::cout << "Processing image " << std::setw(4) << std::setfill('0') << problem.ref_image_id
               << "..." << std::endl;
     cudaSetDevice(0);
@@ -336,36 +337,4 @@ void run_fusion(
 
     std::string ply_path = dense_folder + "/ACMP/ACMP_model.ply";
     StoreColorPlyFileBinaryPointCloud(ply_path, PointCloud);
-}
-
-void launch(const std::string dense_folder, const int32_t geom_iterations, bool planar_prior) {
-    std::vector<Problem> problems;
-    generate_sample_list(dense_folder, problems);
-
-    std::string output_folder = dense_folder + std::string("/ACMP");
-    mkdir(output_folder.c_str(), 0777);
-
-    size_t num_images = problems.size();
-    std::cout << "There are " << num_images << " problems needed to be processed!" << std::endl;
-
-    bool geom_consistency = false;
-    bool multi_geometry   = false;
-    for (size_t i = 0; i < num_images; ++i) {
-        process_problem(dense_folder, problems[i], geom_consistency, planar_prior);
-    }
-    geom_consistency = true;
-    planar_prior     = false;
-    for (int geom_iter = 0; geom_iter < geom_iterations; ++geom_iter) {
-        if (geom_iter == 0) {
-            multi_geometry = false;
-        } else {
-            multi_geometry = true;
-        }
-        for (size_t i = 0; i < num_images; ++i) {
-            process_problem(
-                dense_folder, problems[i], geom_consistency, planar_prior, multi_geometry);
-        }
-    }
-
-    run_fusion(dense_folder, problems, geom_consistency);
 }

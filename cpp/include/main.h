@@ -56,8 +56,14 @@ struct PointList {
     float3 color;
 };
 
+std::vector<Problem> generate_sample_list(const std::string dense_folder);
+void process_problem(
+    const std::string dense_folder,
+    const Problem problem,
+    bool geom_consistency,
+    bool planar_prior,
+    bool multi_geometrty);
 void run_fusion(
     const std::string &dense_folder, const std::vector<Problem> &problems, bool geom_consistency);
-void launch(const std::string dense_folder, const int32_t geom_iterations, bool planar_prior);
 
 #endif  // _MAIN_H_

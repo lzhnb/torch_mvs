@@ -3,14 +3,21 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "ndarray_converter.h"
-#include "main.h"
 #include "ACMP.h"
+#include "main.h"
+#include "ndarray_converter.h"
 
 namespace py = pybind11;
 
 PYBIND11_MODULE(EXTENSION_NAME, m) {
     NDArrayConverter::init_numpy();
 
-    m.def("launch", &launch);
+    py::class_<Problem>(m, "Problem")
+        .def(py::init<>())
+        .def_readwrite("ref_image_id", &Problem::ref_image_id)
+        .def_readwrite("src_image_ids", &Problem::src_image_ids);
+
+    m.def("generate_sample_list", &generate_sample_list);
+    m.def("process_problem", &process_problem);
+    m.def("run_fusion", &run_fusion);
 }
