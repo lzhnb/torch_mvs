@@ -2,6 +2,10 @@
 
 #include <cstdarg>
 
+namespace mvs
+{
+
+
 void StringAppendV(std::string *dst, const char *format, va_list ap) {
     // First try with a small fixed size buffer.
     static const int kFixedBufferSize = 1024;
@@ -807,3 +811,5 @@ float PMMVS::GetDepthFromPlaneParam(const float4 plane_hypothesis, const int x, 
             (cameras[0].K[0] / cameras[0].K[4]) * (y - cameras[0].K[5]) * plane_hypothesis.y +
             cameras[0].K[0] * plane_hypothesis.z);
 }
+    
+} // namespace mvs

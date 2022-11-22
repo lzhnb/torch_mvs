@@ -1,5 +1,7 @@
 #include "mvs.h"
 
+namespace mvs {
+
 __device__ void sort_small(float *d, const int n) {
     int j;
     for (int i = 1; i < n; i++) {
@@ -1510,3 +1512,5 @@ void PMMVS::RunPatchMatch() {
     cudaMemcpy(costs_host, costs_cuda, sizeof(float) * width * height, cudaMemcpyDeviceToHost);
     CUDA_SAFE_CALL(cudaDeviceSynchronize());
 }
+
+}  // namespace mvs

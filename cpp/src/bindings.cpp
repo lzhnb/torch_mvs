@@ -4,14 +4,18 @@
 #include <pybind11/stl.h>
 
 #include "launch.h"
+#include "mvs.h"
 #include "ndarray_converter.h"
 #include "utils.h"
-#include "mvs.h"
 
 namespace py = pybind11;
 
+namespace mvs {
+
 PYBIND11_MODULE(EXTENSION_NAME, m) {
     NDArrayConverter::init_numpy();
+
+    py::class_<PMMVS>(m, "PMMVS").def(py::init<>());
 
     py::class_<Problem>(m, "Problem")
         .def(py::init<>())
@@ -22,3 +26,5 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
     m.def("process_problem", &process_problem);
     m.def("run_fusion", &run_fusion);
 }
+
+}  // namespace mvs

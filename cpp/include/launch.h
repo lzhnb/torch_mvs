@@ -1,5 +1,4 @@
-#ifndef _MAIN_H_
-#define _MAIN_H_
+#pragma once
 
 #include "opencv2/calib3d/calib3d.hpp"
 #include "opencv2/core/core.hpp"
@@ -28,6 +27,8 @@
 #include "iomanip"
 
 #define MAX_IMAGES 256
+
+namespace mvs {
 
 struct Camera {
     float K[9];
@@ -69,4 +70,4 @@ std::tuple<std::vector<cv::Mat>, std::vector<cv::Mat>> run_fusion(
     const bool geom_consistency,
     const int32_t geom_consistent);
 
-#endif  // _MAIN_H_
+}  // namespace mvs

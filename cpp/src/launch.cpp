@@ -1,5 +1,7 @@
 #include "mvs.h"
 
+namespace mvs {
+
 std::vector<Problem> generate_sample_list(const std::string cluster_list_path) {
     std::vector<Problem> problems;
     problems.clear();
@@ -46,17 +48,17 @@ void process_problem(
     std::string result_folder = result_path.str();
     mkdir(result_folder.c_str(), 0777);
 
-    PMMVS acmp;
+    PMMVS mvs;
     if (geom_consistency) {
-        acmp.SetGeomConsistencyParams(multi_geometrty);
+        mvs.SetGeomConsistencyParams(multi_geometrty);
     }
-    acmp.InuputInitialization(dense_folder, problem);
+    mvs.InuputInitialization(dense_folder, problem);
 
-    acmp.CudaSpaceInitialization(dense_folder, problem);
-    acmp.RunPatchMatch();
+    mvs.CudaSpaceInitialization(dense_folder, problem);
+    mvs.RunPatchMatch();
 
-    const int width  = acmp.GetReferenceImageWidth();
-    const int height = acmp.GetReferenceImageHeight();
+    const int width  = mvs.GetReferenceImageWidth();
+    const int height = mvs.GetReferenceImageHeight();
 
     cv::Mat_<float> depths      = cv::Mat::zeros(height, width, CV_32FC1);
     cv::Mat_<cv::Vec3f> normals = cv::Mat::zeros(height, width, CV_32FC3);
@@ -65,24 +67,24 @@ void process_problem(
     for (int col = 0; col < width; ++col) {
         for (int row = 0; row < height; ++row) {
             int center              = row * width + col;
-            float4 plane_hypothesis = acmp.GetPlaneHypothesis(center);
+            float4 plane_hypothesis = mvs.GetPlaneHypothesis(center);
             depths(row, col)        = plane_hypothesis.w;
             normals(row, col) =
                 cv::Vec3f(plane_hypothesis.x, plane_hypothesis.y, plane_hypothesis.z);
-            costs(row, col) = acmp.GetCost(center);
+            costs(row, col) = mvs.GetCost(center);
         }
     }
 
     if (planar_prior) {
         // std::cout << "Run Planar Prior Assisted PatchMatch MVS ..." << std::endl;
-        acmp.SetPlanarPriorParams();
+        mvs.SetPlanarPriorParams();
 
         const cv::Rect imageRC(0, 0, width, height);
         std::vector<cv::Point> support2DPoints;
 
-        acmp.GetSupportPoints(support2DPoints);
-        const auto triangles = acmp.DelaunayTriangulation(imageRC, support2DPoints);
-        cv::Mat refImage     = acmp.GetReferenceImage().clone();
+        mvs.GetSupportPoints(support2DPoints);
+        const auto triangles = mvs.DelaunayTriangulation(imageRC, support2DPoints);
+        cv::Mat refImage     = mvs.GetReferenceImage().clone();
         std::vector<cv::Mat> mbgr(3);
         mbgr[0] = refImage.clone();
         mbgr[1] = refImage.clone();
@@ -133,7 +135,7 @@ void process_problem(
                 }
 
                 // estimate plane parameter
-                float4 n4 = acmp.GetPriorPlaneParams(triangle, depths);
+                float4 n4 = mvs.GetPriorPlaneParams(triangle, depths);
                 planeParams_tri.push_back(n4);
                 idx++;
             }
@@ -143,9 +145,8 @@ void process_problem(
         for (int i = 0; i < width; ++i) {
             for (int j = 0; j < height; ++j) {
                 if (mask_tri(j, i) > 0) {
-                    float d =
-                        acmp.GetDepthFromPlaneParam(planeParams_tri[mask_tri(j, i) - 1], i, j);
-                    if (d <= acmp.GetMaxDepth() && d >= acmp.GetMinDepth()) {
+                    float d = mvs.GetDepthFromPlaneParam(planeParams_tri[mask_tri(j, i) - 1], i, j);
+                    if (d <= mvs.GetMaxDepth() && d >= mvs.GetMinDepth()) {
                         priordepths(j, i) = d;
                     } else {
                         mask_tri(j, i) = 0;
@@ -156,17 +157,17 @@ void process_problem(
         // std::string depth_path = result_folder + "/depths_prior.dmb";
         //  writeDepthDmb(depth_path, priordepths);
 
-        acmp.CudaPlanarPriorInitialization(planeParams_tri, mask_tri);
-        acmp.RunPatchMatch();
+        mvs.CudaPlanarPriorInitialization(planeParams_tri, mask_tri);
+        mvs.RunPatchMatch();
 
         for (int col = 0; col < width; ++col) {
             for (int row = 0; row < height; ++row) {
                 int center              = row * width + col;
-                float4 plane_hypothesis = acmp.GetPlaneHypothesis(center);
+                float4 plane_hypothesis = mvs.GetPlaneHypothesis(center);
                 depths(row, col)        = plane_hypothesis.w;
                 normals(row, col) =
                     cv::Vec3f(plane_hypothesis.x, plane_hypothesis.y, plane_hypothesis.z);
-                costs(row, col) = acmp.GetCost(center);
+                costs(row, col) = mvs.GetCost(center);
             }
         }
     }
@@ -367,3 +368,5 @@ std::tuple<std::vector<cv::Mat>, std::vector<cv::Mat>> run_fusion(
 
     return std::make_tuple(output_proj_depths, output_proj_normals);
 }
+
+}  // namespace mvs

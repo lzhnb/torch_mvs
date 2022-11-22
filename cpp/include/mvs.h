@@ -3,6 +3,8 @@
 #include "launch.h"
 #include "utils.h"
 
+namespace mvs {
+
 class PMMVS {
 public:
     PMMVS();
@@ -56,3 +58,4 @@ private:
     unsigned int *plane_masks_cuda;
 };
 
+}  // namespace mvs

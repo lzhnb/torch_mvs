@@ -47,19 +47,20 @@ if __name__ == "__main__":
     num_images = len(problems)
     print(f"There are {num_images} problems needed to be processed!")
 
-    for i in trange(num_images, desc="initialization"):
-        _C.process_problem(result_folder, problems[i], False, args.planar_prior, False)
-    
-    for geom_iter in range(args.geom_iterations):
-        multi_geometry = geom_iter != 0
-        for i in trange(num_images, desc="geometric consistent"):
-            _C.process_problem(result_folder, problems[i], True, False, multi_geometry)
-    
-    depths, normals = _C.run_fusion(result_folder, problems, True, args.geom_cons)
 
-    os.makedirs(os.path.join(result_folder, "depth_normal"), exist_ok=True)
-    for i, depth, normal in zip(range(num_images), depths, normals):
-        depth = depth[..., None]
-        depth_normal = np.concatenate([depth, normal], axis=-1)
-        save_file = os.path.join(result_folder, "depth_normal", f"{i:04}.npy")
-        np.save(save_file, depth_normal)
+    # for i in trange(num_images, desc="initialization"):
+    #     _C.process_problem(result_folder, problems[i], False, args.planar_prior, False)
+    
+    # for geom_iter in range(args.geom_iterations):
+    #     multi_geometry = geom_iter != 0
+    #     for i in trange(num_images, desc="geometric consistent"):
+    #         _C.process_problem(result_folder, problems[i], True, False, multi_geometry)
+    
+    # depths, normals = _C.run_fusion(result_folder, problems, True, args.geom_cons)
+
+    # os.makedirs(os.path.join(result_folder, "depth_normal"), exist_ok=True)
+    # for i, depth, normal in zip(range(num_images), depths, normals):
+    #     depth = depth[..., None]
+    #     depth_normal = np.concatenate([depth, normal], axis=-1)
+    #     save_file = os.path.join(result_folder, "depth_normal", f"{i:04}.npy")
+    #     np.save(save_file, depth_normal)

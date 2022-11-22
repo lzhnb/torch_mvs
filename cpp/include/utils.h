@@ -2,6 +2,8 @@
 
 #include "launch.h"
 
+namespace mvs {
+
 int readDepthDmb(const std::string file_path, cv::Mat_<float> &depth);
 int readNormalDmb(const std::string file_path, cv::Mat_<cv::Vec3f> &normal);
 int writeDepthDmb(const std::string file_path, const cv::Mat_<float> depth);
@@ -46,4 +48,4 @@ struct PatchMatchParams {
     bool planar_prior     = false;
 };
 
-
+}  // namespace mvs
