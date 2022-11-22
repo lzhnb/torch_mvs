@@ -16,7 +16,7 @@ cuda_add_library(
     libmvs SHARED
     cpp/src/bindings.cpp
     cpp/src/ndarray_converter.cpp
-    cpp/src/utils.cpp
+    cpp/src/mvs.cpp
     cpp/src/patch_match.cu
     cpp/src/launch.cpp)
 

@@ -105,38 +105,7 @@ void CudaCheckError(const char *file, const int line) {
 
 PMMVS::PMMVS() {}
 
-PMMVS::~PMMVS() {
-    delete[] plane_hypotheses_host;
-    delete[] costs_host;
-
-    for (int i = 0; i < num_images; ++i) {
-        cudaDestroyTextureObject(texture_objects_host.images[i]);
-        cudaFreeArray(cuArray[i]);
-    }
-    cudaFree(texture_objects_cuda);
-    cudaFree(cameras_cuda);
-    cudaFree(plane_hypotheses_cuda);
-    cudaFree(costs_cuda);
-    cudaFree(rand_states_cuda);
-    cudaFree(selected_views_cuda);
-    cudaFree(depths_cuda);
-
-    if (params.geom_consistency) {
-        for (int i = 0; i < num_images; ++i) {
-            cudaDestroyTextureObject(texture_depths_host.images[i]);
-            cudaFreeArray(cuDepthArray[i]);
-        }
-        cudaFree(texture_depths_cuda);
-    }
-
-    if (params.planar_prior) {
-        delete[] prior_planes_host;
-        delete[] plane_masks_host;
-
-        cudaFree(prior_planes_cuda);
-        cudaFree(plane_masks_cuda);
-    }
-}
+PMMVS::~PMMVS() {}
 
 Camera ReadCamera(const std::string &cam_path) {
     Camera camera;
@@ -360,7 +329,7 @@ int writeNormalDmb(const std::string file_path, const cv::Mat_<cv::Vec3f> normal
 }
 
 void StoreColorPlyFileBinaryPointCloud(
-    const std::string &plyFilePath, const std::vector<PointList> &pc) {
+    const std::string &plyFilePath, const vector<PointList> &pc) {
     std::cout << "store 3D points to ply file" << std::endl;
 
     FILE *outputPly;
@@ -423,6 +392,39 @@ static float GetDisparity(const Camera &camera, const int2 &p, const float &dept
     return std::sqrt(point3D[0] * point3D[0] + point3D[1] * point3D[1] + point3D[2] * point3D[2]);
 }
 
+void PMMVS::release() {
+    delete[] plane_hypotheses_host;
+    delete[] costs_host;
+
+    for (int i = 0; i < num_images; ++i) {
+        cudaDestroyTextureObject(texture_objects_host.images[i]);
+        cudaFreeArray(cuArray[i]);
+    }
+    cudaFree(texture_objects_cuda);
+    cudaFree(cameras_cuda);
+    cudaFree(plane_hypotheses_cuda);
+    cudaFree(costs_cuda);
+    cudaFree(rand_states_cuda);
+    cudaFree(selected_views_cuda);
+    cudaFree(depths_cuda);
+
+    if (params.geom_consistency) {
+        for (int i = 0; i < num_images; ++i) {
+            cudaDestroyTextureObject(texture_depths_host.images[i]);
+            cudaFreeArray(cuDepthArray[i]);
+        }
+        cudaFree(texture_depths_cuda);
+    }
+
+    if (params.planar_prior) {
+        delete[] prior_planes_host;
+        delete[] plane_masks_host;
+
+        cudaFree(prior_planes_cuda);
+        cudaFree(plane_masks_cuda);
+    }
+}
+
 void PMMVS::SetGeomConsistencyParams(bool multi_geometry = false) {
     params.geom_consistency = true;
     params.max_iterations   = 2;
@@ -438,67 +440,46 @@ void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem 
     std::string image_folder = dense_folder + std::string("/images");
     std::string cam_folder   = dense_folder + std::string("/cams");
 
-    std::stringstream image_path;
-    image_path << image_folder << "/" << std::setw(4) << std::setfill('0') << problem.ref_image_id
-               << ".jpg";
-    cv::Mat_<uint8_t> image_uint = cv::imread(image_path.str(), cv::IMREAD_GRAYSCALE);
-    cv::Mat image_float;
-    image_uint.convertTo(image_float, CV_32FC1);
-    images.push_back(image_float);
-    std::stringstream cam_path;
-    cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0') << problem.ref_image_id
-             << "_cam.txt";
-    Camera camera = ReadCamera(cam_path.str());
-    camera.height = image_float.rows;
-    camera.width  = image_float.cols;
-    cameras.push_back(camera);
+    images.push_back(all_images[problem.ref_image_id]);
+    cameras.push_back(all_cameras[problem.ref_image_id]);
 
-    size_t num_src_images = problem.src_image_ids.size();
+    const size_t num_src_images = problem.src_image_ids.size();
     for (size_t i = 0; i < num_src_images; ++i) {
-        std::stringstream image_path;
-        image_path << image_folder << "/" << std::setw(4) << std::setfill('0')
-                   << problem.src_image_ids[i] << ".jpg";
-        cv::Mat_<uint8_t> image_uint = cv::imread(image_path.str(), cv::IMREAD_GRAYSCALE);
-        cv::Mat image_float;
-        image_uint.convertTo(image_float, CV_32FC1);
-        images.push_back(image_float);
-        std::stringstream cam_path;
-        cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0')
-                 << problem.src_image_ids[i] << "_cam.txt";
-        Camera camera = ReadCamera(cam_path.str());
-        camera.height = image_float.rows;
-        camera.width  = image_float.cols;
-        cameras.push_back(camera);
+        images.push_back(all_images[problem.src_image_ids[i]]);
+        cameras.push_back(all_cameras[problem.src_image_ids[i]]);
     }
 
-    // Scale cameras and images
-    for (size_t i = 0; i < images.size(); ++i) {
-        if (images[i].cols <= params.max_image_size && images[i].rows <= params.max_image_size) {
-            continue;
-        }
+    // std::stringstream image_path;
+    // image_path << image_folder << "/" << std::setw(4) << std::setfill('0') << problem.ref_image_id
+    //            << ".jpg";
+    // cv::Mat_<uint8_t> image_uint = cv::imread(image_path.str(), cv::IMREAD_GRAYSCALE);
+    // cv::Mat image_float;
+    // image_uint.convertTo(image_float, CV_32FC1);
+    // std::stringstream cam_path;
+    // cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0') << problem.ref_image_id
+    //          << "_cam.txt";
+    // Camera camera = ReadCamera(cam_path.str());
+    // camera.height = image_float.rows;
+    // camera.width  = image_float.cols;
+    // cameras.push_back(camera);
 
-        const float factor_x = static_cast<float>(params.max_image_size) / images[i].cols;
-        const float factor_y = static_cast<float>(params.max_image_size) / images[i].rows;
-        const float factor   = std::min(factor_x, factor_y);
-
-        const int new_cols = std::round(images[i].cols * factor);
-        const int new_rows = std::round(images[i].rows * factor);
-
-        const float scale_x = new_cols / static_cast<float>(images[i].cols);
-        const float scale_y = new_rows / static_cast<float>(images[i].rows);
-
-        cv::Mat_<float> scaled_image_float;
-        cv::resize(
-            images[i], scaled_image_float, cv::Size(new_cols, new_rows), 0, 0, cv::INTER_LINEAR);
-        images[i] = scaled_image_float.clone();
-
-        cameras[i].K[0] *= scale_x;
-        cameras[i].K[2] *= scale_x;
-        cameras[i].K[4] *= scale_y;
-        cameras[i].K[5] *= scale_y;
-        cameras[i].height = scaled_image_float.rows;
-        cameras[i].width  = scaled_image_float.cols;
-    }
+    // size_t num_src_images = problem.src_image_ids.size();
+    // for (size_t i = 0; i < num_src_images; ++i) {
+    //     std::stringstream image_path;
+    //     image_path << image_folder << "/" << std::setw(4) << std::setfill('0')
+    //                << problem.src_image_ids[i] << ".jpg";
+    //     cv::Mat_<uint8_t> image_uint = cv::imread(image_path.str(), cv::IMREAD_GRAYSCALE);
+    //     cv::Mat image_float;
+    //     image_uint.convertTo(image_float, CV_32FC1);
+    //     images.push_back(image_float);
+    //     std::stringstream cam_path;
+    //     cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0')
+    //              << problem.src_image_ids[i] << "_cam.txt";
+    //     Camera camera = ReadCamera(cam_path.str());
+    //     camera.height = image_float.rows;
+    //     camera.width  = image_float.cols;
+    //     cameras.push_back(camera);
+    // }
 
     params.depth_min = cameras[0].depth_min * 0.6f;
     params.depth_max = cameras[0].depth_max * 1.2f;
@@ -535,6 +516,82 @@ void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem 
         }
     }
 }
+
+// void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem &problem) {
+//     images.clear();
+//     cameras.clear();
+
+//     std::string image_folder = dense_folder + std::string("/images");
+//     std::string cam_folder   = dense_folder + std::string("/cams");
+
+//     std::stringstream image_path;
+//     image_path << image_folder << "/" << std::setw(4) << std::setfill('0') << problem.ref_image_id
+//                << ".jpg";
+//     cv::Mat_<uint8_t> image_uint = cv::imread(image_path.str(), cv::IMREAD_GRAYSCALE);
+//     cv::Mat image_float;
+//     image_uint.convertTo(image_float, CV_32FC1);
+//     images.push_back(image_float);
+//     std::stringstream cam_path;
+//     cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0') << problem.ref_image_id
+//              << "_cam.txt";
+//     Camera camera = ReadCamera(cam_path.str());
+//     camera.height = image_float.rows;
+//     camera.width  = image_float.cols;
+//     cameras.push_back(camera);
+
+//     size_t num_src_images = problem.src_image_ids.size();
+//     for (size_t i = 0; i < num_src_images; ++i) {
+//         std::stringstream image_path;
+//         image_path << image_folder << "/" << std::setw(4) << std::setfill('0')
+//                    << problem.src_image_ids[i] << ".jpg";
+//         cv::Mat_<uint8_t> image_uint = cv::imread(image_path.str(), cv::IMREAD_GRAYSCALE);
+//         cv::Mat image_float;
+//         image_uint.convertTo(image_float, CV_32FC1);
+//         images.push_back(image_float);
+//         std::stringstream cam_path;
+//         cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0')
+//                  << problem.src_image_ids[i] << "_cam.txt";
+//         Camera camera = ReadCamera(cam_path.str());
+//         camera.height = image_float.rows;
+//         camera.width  = image_float.cols;
+//         cameras.push_back(camera);
+//     }
+
+//     params.depth_min = cameras[0].depth_min * 0.6f;
+//     params.depth_max = cameras[0].depth_max * 1.2f;
+//     // std::cout << "depthe range: " << params.depth_min << " " << params.depth_max << std::endl;
+//     params.num_images = (int)images.size();
+//     // std::cout << "num images: " << params.num_images << std::endl;
+//     params.disparity_min = cameras[0].K[0] * params.baseline / params.depth_max;
+//     params.disparity_max = cameras[0].K[0] * params.baseline / params.depth_min;
+
+//     if (params.geom_consistency) {
+//         depths.clear();
+
+//         std::stringstream result_path;
+//         result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
+//                     << problem.ref_image_id;
+//         std::string result_folder = result_path.str();
+//         std::string suffix        = "/depths.dmb";
+//         if (params.multi_geometry) { suffix = "/depths_geom.dmb"; }
+//         std::string depth_path = result_folder + suffix;
+//         cv::Mat_<float> ref_depth;
+//         readDepthDmb(depth_path, ref_depth);
+//         depths.push_back(ref_depth);
+
+//         size_t num_src_images = problem.src_image_ids.size();
+//         for (size_t i = 0; i < num_src_images; ++i) {
+//             std::stringstream result_path;
+//             result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
+//                         << problem.src_image_ids[i];
+//             std::string result_folder = result_path.str();
+//             std::string depth_path    = result_folder + suffix;
+//             cv::Mat_<float> depth;
+//             readDepthDmb(depth_path, depth);
+//             depths.push_back(depth);
+//         }
+//     }
+// }
 
 void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Problem &problem) {
     num_images = (int)images.size();
@@ -679,7 +736,7 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
 }
 
 void PMMVS::CudaPlanarPriorInitialization(
-    const std::vector<float4> &PlaneParams, const cv::Mat_<float> &masks) {
+    const vector<float4> &PlaneParams, const cv::Mat_<float> &masks) {
     prior_planes_host = new float4[cameras[0].height * cameras[0].width];
     cudaMalloc(
         (void **)&prior_planes_cuda, sizeof(float4) * (cameras[0].height * cameras[0].width));
@@ -718,11 +775,7 @@ float4 PMMVS::GetPlaneHypothesis(const int index) { return plane_hypotheses_host
 
 float PMMVS::GetCost(const int index) { return costs_host[index]; }
 
-float PMMVS::GetMinDepth() { return params.depth_min; }
-
-float PMMVS::GetMaxDepth() { return params.depth_max; }
-
-void PMMVS::GetSupportPoints(std::vector<cv::Point> &support2DPoints) {
+void PMMVS::GetSupportPoints(vector<cv::Point> &support2DPoints) {
     support2DPoints.clear();
     const int step_size = 5;
     const int width     = GetReferenceImageWidth();
@@ -747,13 +800,13 @@ void PMMVS::GetSupportPoints(std::vector<cv::Point> &support2DPoints) {
     }
 }
 
-std::vector<Triangle> PMMVS::DelaunayTriangulation(
-    const cv::Rect boundRC, const std::vector<cv::Point> &points) {
-    if (points.empty()) { return std::vector<Triangle>(); }
+vector<Triangle> PMMVS::DelaunayTriangulation(
+    const cv::Rect boundRC, const vector<cv::Point> &points) {
+    if (points.empty()) { return vector<Triangle>(); }
 
-    std::vector<Triangle> results;
+    vector<Triangle> results;
 
-    std::vector<cv::Vec6f> temp_results;
+    vector<cv::Vec6f> temp_results;
     cv::Subdiv2D subdiv2d(boundRC);
     for (const auto point : points) {
         subdiv2d.insert(cv::Point2f((float)point.x, (float)point.y));

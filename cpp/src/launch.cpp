@@ -2,8 +2,8 @@
 
 namespace mvs {
 
-std::vector<Problem> generate_sample_list(const std::string cluster_list_path) {
-    std::vector<Problem> problems;
+vector<Problem> generate_sample_list(const std::string cluster_list_path) {
+    vector<Problem> problems;
     problems.clear();
 
     std::ifstream file(cluster_list_path);
@@ -33,12 +33,39 @@ std::vector<Problem> generate_sample_list(const std::string cluster_list_path) {
     return problems;
 }
 
+void PMMVS::load_samples(const std::string &dense_folder, const vector<Problem> problems) {
+    all_images.clear();
+    all_cameras.clear();
+
+    std::string image_folder = dense_folder + std::string("/images");
+    std::string cam_folder   = dense_folder + std::string("/cams");
+
+    const int32_t num_images = problems.size();
+    for (size_t i = 0; i < num_images; ++i) {
+        std::stringstream image_path;
+        image_path << image_folder << "/" << std::setw(4) << std::setfill('0')
+                   << problems[i].ref_image_id << ".jpg";
+        cv::Mat_<uint8_t> image_uint = cv::imread(image_path.str(), cv::IMREAD_GRAYSCALE);
+        cv::Mat image_float;
+        image_uint.convertTo(image_float, CV_32FC1);
+        all_images.push_back(image_float);
+        std::stringstream cam_path;
+        cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0')
+                 << problems[i].ref_image_id << "_cam.txt";
+        Camera camera = ReadCamera(cam_path.str());
+        camera.height = image_float.rows;
+        camera.width  = image_float.cols;
+        all_cameras.push_back(camera);
+    }
+}
+
 void process_problem(
     const std::string dense_folder,
     const Problem problem,
-    bool geom_consistency,
-    bool planar_prior,
-    bool multi_geometrty) {
+    const bool geom_consistency,
+    const bool planar_prior,
+    const bool multi_geometrty,
+    PMMVS mvs) {
     // std::cout << "Processing image " << std::setw(4) << std::setfill('0') << problem.ref_image_id
     //           << "..." << std::endl;
     cudaSetDevice(0);
@@ -48,7 +75,7 @@ void process_problem(
     std::string result_folder = result_path.str();
     mkdir(result_folder.c_str(), 0777);
 
-    PMMVS mvs;
+    // PMMVS mvs;
     if (geom_consistency) {
         mvs.SetGeomConsistencyParams(multi_geometrty);
     }
@@ -80,12 +107,12 @@ void process_problem(
         mvs.SetPlanarPriorParams();
 
         const cv::Rect imageRC(0, 0, width, height);
-        std::vector<cv::Point> support2DPoints;
+        vector<cv::Point> support2DPoints;
 
         mvs.GetSupportPoints(support2DPoints);
         const auto triangles = mvs.DelaunayTriangulation(imageRC, support2DPoints);
         cv::Mat refImage     = mvs.GetReferenceImage().clone();
-        std::vector<cv::Mat> mbgr(3);
+        vector<cv::Mat> mbgr(3);
         mbgr[0] = refImage.clone();
         mbgr[1] = refImage.clone();
         mbgr[2] = refImage.clone();
@@ -103,7 +130,7 @@ void process_problem(
         cv::imwrite(triangulation_path, srcImage);
 
         cv::Mat_<float> mask_tri = cv::Mat::zeros(height, width, CV_32FC1);
-        std::vector<float4> planeParams_tri;
+        vector<float4> planeParams_tri;
         planeParams_tri.clear();
 
         uint32_t idx = 0;
@@ -146,7 +173,7 @@ void process_problem(
             for (int j = 0; j < height; ++j) {
                 if (mask_tri(j, i) > 0) {
                     float d = mvs.GetDepthFromPlaneParam(planeParams_tri[mask_tri(j, i) - 1], i, j);
-                    if (d <= mvs.GetMaxDepth() && d >= mvs.GetMinDepth()) {
+                    if (d <= mvs.params.depth_max && d >= mvs.params.depth_min) {
                         priordepths(j, i) = d;
                     } else {
                         mask_tri(j, i) = 0;
@@ -182,24 +209,26 @@ void process_problem(
     writeDepthDmb(depth_path, depths);
     writeNormalDmb(normal_path, normals);
     writeDepthDmb(cost_path, costs);
+
+    mvs.release();
     // std::cout << "Processing image " << std::setw(4) << std::setfill('0') << problem.ref_image_id
     //           << " done!" << std::endl;
 }
 
-std::tuple<std::vector<cv::Mat>, std::vector<cv::Mat>> run_fusion(
+std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
     const std::string &dense_folder,
-    const std::vector<Problem> &problems,
+    const vector<Problem> &problems,
     const bool geom_consistency,
     const int32_t geom_consistent) {
     size_t num_images        = problems.size();
     std::string image_folder = dense_folder + std::string("/images");
     std::string cam_folder   = dense_folder + std::string("/cams");
 
-    std::vector<cv::Mat> images;
-    std::vector<Camera> cameras;
-    std::vector<cv::Mat_<float>> depths;
-    std::vector<cv::Mat_<cv::Vec3f>> normals;
-    std::vector<cv::Mat> masks;
+    vector<cv::Mat> images;
+    vector<Camera> cameras;
+    vector<cv::Mat_<float>> depths;
+    vector<cv::Mat_<cv::Vec3f>> normals;
+    vector<cv::Mat> masks;
     images.clear();
     cameras.clear();
     depths.clear();
@@ -243,12 +272,12 @@ std::tuple<std::vector<cv::Mat>, std::vector<cv::Mat>> run_fusion(
         masks.push_back(mask);
     }
 
-    std::vector<PointList> PointCloud;
+    vector<PointList> PointCloud;
     PointCloud.clear();
 
     // output
-    std::vector<cv::Mat> output_proj_depths;
-    std::vector<cv::Mat> output_proj_normals;
+    vector<cv::Mat> output_proj_depths;
+    vector<cv::Mat> output_proj_normals;
 
     for (size_t i = 0; i < num_images; ++i) {
         std::cout << "Fusing image " << std::setw(4) << std::setfill('0') << i << "..."
@@ -256,7 +285,7 @@ std::tuple<std::vector<cv::Mat>, std::vector<cv::Mat>> run_fusion(
         const int cols = depths[i].cols;
         const int rows = depths[i].rows;
         int num_ngb    = problems[i].src_image_ids.size();
-        std::vector<int2> used_list(num_ngb, make_int2(-1, -1));
+        vector<int2> used_list(num_ngb, make_int2(-1, -1));
 
         // output
         cv::Mat output_proj_depth  = cv::Mat::zeros(rows, cols, CV_32FC1);

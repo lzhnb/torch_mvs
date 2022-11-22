@@ -28,6 +28,8 @@
 
 #define MAX_IMAGES 256
 
+using std::vector;
+
 namespace mvs {
 
 struct Camera {
@@ -42,7 +44,7 @@ struct Camera {
 
 struct Problem {
     int ref_image_id;
-    std::vector<int> src_image_ids;
+    vector<int> src_image_ids;
 };
 
 struct Triangle {
@@ -56,18 +58,5 @@ struct PointList {
     float3 normal;
     float3 color;
 };
-
-std::vector<Problem> generate_sample_list(const std::string dense_folder);
-void process_problem(
-    const std::string dense_folder,
-    const Problem problem,
-    bool geom_consistency,
-    bool planar_prior,
-    bool multi_geometrty);
-std::tuple<std::vector<cv::Mat>, std::vector<cv::Mat>> run_fusion(
-    const std::string &dense_folder,
-    const std::vector<Problem> &problems,
-    const bool geom_consistency,
-    const int32_t geom_consistent);
 
 }  // namespace mvs

@@ -15,7 +15,10 @@ namespace mvs {
 PYBIND11_MODULE(EXTENSION_NAME, m) {
     NDArrayConverter::init_numpy();
 
-    py::class_<PMMVS>(m, "PMMVS").def(py::init<>());
+    py::class_<PMMVS>(m, "PMMVS")
+        .def(py::init<>())
+        .def("load_samples", &PMMVS::load_samples)
+        .def("release", &PMMVS::release);
 
     py::class_<Problem>(m, "Problem")
         .def(py::init<>())

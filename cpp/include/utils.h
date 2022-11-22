@@ -17,7 +17,7 @@ float3 Get3DPointonRefCam(const int x, const int y, const float depth, const Cam
 void ProjectonCamera(const float3 PointX, const Camera camera, float2 &point, float &depth);
 float GetAngle(const cv::Vec3f &v1, const cv::Vec3f &v2);
 void StoreColorPlyFileBinaryPointCloud(
-    const std::string &plyFilePath, const std::vector<PointList> &pc);
+    const std::string &plyFilePath, const vector<PointList> &pc);
 
 #define CUDA_SAFE_CALL(error) CudaSafeCall(error, __FILE__, __LINE__)
 #define CUDA_CHECK_ERROR() CudaCheckError(__FILE__, __LINE__)
@@ -33,7 +33,6 @@ struct PatchMatchParams {
     int max_iterations    = 3;
     int patch_size        = 11;
     int num_images        = 5;
-    int max_image_size    = 3200;
     int radius_increment  = 2;
     float sigma_spatial   = 5.0f;
     float sigma_color     = 3.0f;
