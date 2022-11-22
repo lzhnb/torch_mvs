@@ -1447,7 +1447,7 @@ void ACMP::RunPatchMatch() {
     block_size_checkerboard.z = 1;
 
     int max_iterations = params.max_iterations;
-    std::cout << "max_iterations: " << max_iterations << std::endl;
+    // std::cout << "max_iterations: " << max_iterations << std::endl;
 
     RandomInitialization<<<grid_size_randinit, block_size_randinit>>>(
         texture_objects_cuda,
@@ -1488,7 +1488,7 @@ void ACMP::RunPatchMatch() {
             params,
             i);
         CUDA_SAFE_CALL(cudaDeviceSynchronize());
-        printf("iteration: %d\n", i);
+        // printf("iteration: %d\n", i);
     }
 
     GetDepthandNormal<<<grid_size_randinit, block_size_randinit>>>(

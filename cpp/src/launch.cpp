@@ -39,12 +39,12 @@ void process_problem(
     bool geom_consistency,
     bool planar_prior,
     bool multi_geometrty) {
-    std::cout << "Processing image " << std::setw(4) << std::setfill('0') << problem.ref_image_id
-              << "..." << std::endl;
+    // std::cout << "Processing image " << std::setw(4) << std::setfill('0') << problem.ref_image_id
+    //           << "..." << std::endl;
     cudaSetDevice(0);
     std::stringstream result_path;
-    result_path << dense_folder << "/ACMP"
-                << "/2333_" << std::setw(4) << std::setfill('0') << problem.ref_image_id;
+    result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
+                << problem.ref_image_id;
     std::string result_folder = result_path.str();
     mkdir(result_folder.c_str(), 0777);
 
@@ -76,7 +76,7 @@ void process_problem(
     }
 
     if (planar_prior) {
-        std::cout << "Run Planar Prior Assisted PatchMatch MVS ..." << std::endl;
+        // std::cout << "Run Planar Prior Assisted PatchMatch MVS ..." << std::endl;
         acmp.SetPlanarPriorParams();
 
         const cv::Rect imageRC(0, 0, width, height);
@@ -183,11 +183,11 @@ void process_problem(
     writeDepthDmb(depth_path, depths);
     writeNormalDmb(normal_path, normals);
     writeDepthDmb(cost_path, costs);
-    std::cout << "Processing image " << std::setw(4) << std::setfill('0') << problem.ref_image_id
-              << " done!" << std::endl;
+    // std::cout << "Processing image " << std::setw(4) << std::setfill('0') << problem.ref_image_id
+    //           << " done!" << std::endl;
 }
 
-void run_fusion(
+std::tuple<std::vector<cv::Mat>, std::vector<cv::Mat>> run_fusion(
     const std::string &dense_folder, const std::vector<Problem> &problems, bool geom_consistency) {
     size_t num_images        = problems.size();
     std::string image_folder = dense_folder + std::string("/images");
@@ -205,8 +205,8 @@ void run_fusion(
     masks.clear();
 
     for (size_t i = 0; i < num_images; ++i) {
-        std::cout << "Reading image " << std::setw(4) << std::setfill('0') << i << "..."
-                  << std::endl;
+        // std::cout << "Reading image " << std::setw(4) << std::setfill('0') << i << "..."
+        //           << std::endl;
         std::stringstream image_path;
         image_path << image_folder << "/" << std::setw(4) << std::setfill('0')
                    << problems[i].ref_image_id << ".jpg";
@@ -217,8 +217,8 @@ void run_fusion(
         Camera camera = ReadCamera(cam_path.str());
 
         std::stringstream result_path;
-        result_path << dense_folder << "/ACMP"
-                    << "/2333_" << std::setw(4) << std::setfill('0') << problems[i].ref_image_id;
+        result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
+                    << problems[i].ref_image_id;
         std::string result_folder = result_path.str();
         std::string suffix        = "/depths.dmb";
         if (geom_consistency) {
@@ -244,6 +244,10 @@ void run_fusion(
     std::vector<PointList> PointCloud;
     PointCloud.clear();
 
+    // output
+    std::vector<cv::Mat> output_proj_depths;
+    std::vector<cv::Mat> output_proj_normals;
+
     for (size_t i = 0; i < num_images; ++i) {
         std::cout << "Fusing image " << std::setw(4) << std::setfill('0') << i << "..."
                   << std::endl;
@@ -251,6 +255,11 @@ void run_fusion(
         const int rows = depths[i].rows;
         int num_ngb    = problems[i].src_image_ids.size();
         std::vector<int2> used_list(num_ngb, make_int2(-1, -1));
+
+        // output
+        cv::Mat output_proj_depth  = cv::Mat::zeros(rows, cols, CV_32FC1);
+        cv::Mat output_proj_normal = cv::Mat::zeros(rows, cols, CV_32FC3);
+
         for (int r = 0; r < rows; ++r) {
             for (int c = 0; c < cols; ++c) {
                 if (masks[i].at<uchar>(r, c) == 1) continue;
@@ -260,9 +269,9 @@ void run_fusion(
                 if (ref_depth <= 0.0) continue;
 
                 float3 PointX               = Get3DPointonWorld(c, r, ref_depth, cameras[i]);
-                float3 consistent_Point     = PointX;
+                float3 consistent_point     = PointX;
                 cv::Vec3f consistent_normal = ref_normal;
-                float consistent_Color[3]   = {
+                float consistent_color[3]   = {
                       (float)images[i].at<cv::Vec3b>(r, c)[0],
                       (float)images[i].at<cv::Vec3b>(r, c)[1],
                       (float)images[i].at<cv::Vec3b>(r, c)[2]};
@@ -293,13 +302,13 @@ void run_fusion(
 
                         if (reproj_error < 2.0f && relative_depth_diff < 0.01f &&
                             angle < 0.174533f) {
-                            consistent_Point.x += tmp_X.x;
-                            consistent_Point.y += tmp_X.y;
-                            consistent_Point.z += tmp_X.z;
+                            consistent_point.x += tmp_X.x;
+                            consistent_point.y += tmp_X.y;
+                            consistent_point.z += tmp_X.z;
                             consistent_normal = consistent_normal + src_normal;
-                            consistent_Color[0] += images[src_id].at<cv::Vec3b>(src_r, src_c)[0];
-                            consistent_Color[1] += images[src_id].at<cv::Vec3b>(src_r, src_c)[1];
-                            consistent_Color[2] += images[src_id].at<cv::Vec3b>(src_r, src_c)[2];
+                            consistent_color[0] += images[src_id].at<cv::Vec3b>(src_r, src_c)[0];
+                            consistent_color[1] += images[src_id].at<cv::Vec3b>(src_r, src_c)[1];
+                            consistent_color[2] += images[src_id].at<cv::Vec3b>(src_r, src_c)[2];
 
                             used_list[j].x = src_c;
                             used_list[j].y = src_r;
@@ -309,20 +318,34 @@ void run_fusion(
                 }
 
                 if (num_consistent >= 2) {
-                    consistent_Point.x /= (num_consistent + 1.0f);
-                    consistent_Point.y /= (num_consistent + 1.0f);
-                    consistent_Point.z /= (num_consistent + 1.0f);
+                    consistent_point.x /= (num_consistent + 1.0f);
+                    consistent_point.y /= (num_consistent + 1.0f);
+                    consistent_point.z /= (num_consistent + 1.0f);
                     consistent_normal /= (num_consistent + 1.0f);
-                    consistent_Color[0] /= (num_consistent + 1.0f);
-                    consistent_Color[1] /= (num_consistent + 1.0f);
-                    consistent_Color[2] /= (num_consistent + 1.0f);
+                    consistent_color[0] /= (num_consistent + 1.0f);
+                    consistent_color[1] /= (num_consistent + 1.0f);
+                    consistent_color[2] /= (num_consistent + 1.0f);
+
+                    // get valid depth and normal
+                    float2 proj_point;
+                    float proj_depth;
+                    ProjectonCamera(consistent_point, cameras[i], proj_point, proj_depth);
+                    const int32_t proj_ref_r = int32_t(proj_point.y + 0.5f),
+                                  proj_ref_c = int32_t(proj_point.x + 0.5f);
+
+                    if (proj_ref_c >= 0 && proj_ref_c < cols && proj_ref_r >= 0 &&
+                        proj_ref_r < rows && proj_depth > 0.001f) {
+                        output_proj_depth.at<float>(proj_ref_r, proj_ref_c)      = proj_depth;
+                        output_proj_normal.at<cv::Vec3f>(proj_ref_r, proj_ref_c) = cv::Vec3f(
+                            consistent_normal[0], consistent_normal[1], consistent_normal[2]);
+                    }
 
                     PointList point3D;
-                    point3D.coord  = consistent_Point;
+                    point3D.coord  = consistent_point;
                     point3D.normal = make_float3(
                         consistent_normal[0], consistent_normal[1], consistent_normal[2]);
                     point3D.color =
-                        make_float3(consistent_Color[0], consistent_Color[1], consistent_Color[2]);
+                        make_float3(consistent_color[0], consistent_color[1], consistent_color[2]);
                     PointCloud.push_back(point3D);
 
                     for (int j = 0; j < num_ngb; ++j) {
@@ -333,8 +356,13 @@ void run_fusion(
                 }
             }
         }
+
+        output_proj_depths.push_back(output_proj_depth);
+        output_proj_normals.push_back(output_proj_normal);
     }
 
     std::string ply_path = dense_folder + "/ACMP/ACMP_model.ply";
     StoreColorPlyFileBinaryPointCloud(ply_path, PointCloud);
+
+    return std::make_tuple(output_proj_depths, output_proj_normals);
 }
