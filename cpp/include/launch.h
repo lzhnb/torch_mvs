@@ -63,7 +63,10 @@ void process_problem(
     bool geom_consistency,
     bool planar_prior,
     bool multi_geometrty);
-void run_fusion(
-    const std::string &dense_folder, const std::vector<Problem> &problems, bool geom_consistency);
+std::tuple<std::vector<cv::Mat>, std::vector<cv::Mat>> run_fusion(
+    const std::string &dense_folder,
+    const std::vector<Problem> &problems,
+    const bool geom_consistency,
+    const int32_t geom_consistent);
 
 #endif  // _MAIN_H_

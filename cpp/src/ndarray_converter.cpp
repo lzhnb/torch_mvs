@@ -320,9 +320,7 @@ bool NDArrayConverter::toMat(PyObject* o, Mat& m) {
     m.u = g_numpyAllocator.allocate(o, ndims, size, type, step);
     m.addref();
 
-    if (!needcopy) {
-        Py_INCREF(o);
-    }
+    if (!needcopy) { Py_INCREF(o); }
     m.allocator = &g_numpyAllocator;
 
     return true;
