@@ -54,6 +54,9 @@ if __name__ == "__main__":
     for i in trange(num_images, desc="initialization"):
         _C.process_problem(result_folder, problems[i], False, args.planar_prior, False, pmmvs)
     
+    pmmvs.load_depths(result_folder, problems)
+    print(f"Loaded all depths!")
+
     for geom_iter in range(args.geom_iterations):
         multi_geometry = geom_iter != 0
         for i in trange(num_images, desc="geometric consistent"):

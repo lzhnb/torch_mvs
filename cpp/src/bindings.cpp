@@ -18,6 +18,7 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
     py::class_<PMMVS>(m, "PMMVS")
         .def(py::init<>())
         .def("load_samples", &PMMVS::load_samples)
+        .def("load_depths", &PMMVS::load_depths)
         .def("release", &PMMVS::release);
 
     py::class_<Problem>(m, "Problem")

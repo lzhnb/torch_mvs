@@ -11,6 +11,7 @@ public:
     ~PMMVS();
 
     void load_samples(const std::string &dense_folder, const vector<Problem> problems);
+    void load_depths(const std::string &dense_folder, const vector<Problem> problems);
 
     void InuputInitialization(const std::string &dense_folder, const Problem &problem);
     void Colmap2MVS(const std::string &dense_folder, vector<Problem> &problems);
@@ -37,6 +38,7 @@ public:
 private:
     int num_images;
     vector<cv::Mat> all_images;
+    vector<cv::Mat> all_depths;
     vector<Camera> all_cameras;
 
     vector<cv::Mat> images;

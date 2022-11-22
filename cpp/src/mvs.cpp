@@ -449,6 +449,24 @@ void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem 
         cameras.push_back(all_cameras[problem.src_image_ids[i]]);
     }
 
+    params.depth_min = cameras[0].depth_min * 0.6f;
+    params.depth_max = cameras[0].depth_max * 1.2f;
+    // std::cout << "depthe range: " << params.depth_min << " " << params.depth_max << std::endl;
+    params.num_images = (int)images.size();
+    // std::cout << "num images: " << params.num_images << std::endl;
+    params.disparity_min = cameras[0].K[0] * params.baseline / params.depth_max;
+    params.disparity_max = cameras[0].K[0] * params.baseline / params.depth_min;
+
+    if (params.geom_consistency) {
+        depths.clear();
+        depths.push_back(all_depths[problem.ref_image_id]);
+
+        size_t num_src_images = problem.src_image_ids.size();
+        for (size_t i = 0; i < num_src_images; ++i) {
+            depths.push_back(all_depths[problem.src_image_ids[i]]);
+        }
+    }
+
     // std::stringstream image_path;
     // image_path << image_folder << "/" << std::setw(4) << std::setfill('0') << problem.ref_image_id
     //            << ".jpg";
@@ -481,40 +499,32 @@ void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem 
     //     cameras.push_back(camera);
     // }
 
-    params.depth_min = cameras[0].depth_min * 0.6f;
-    params.depth_max = cameras[0].depth_max * 1.2f;
-    // std::cout << "depthe range: " << params.depth_min << " " << params.depth_max << std::endl;
-    params.num_images = (int)images.size();
-    // std::cout << "num images: " << params.num_images << std::endl;
-    params.disparity_min = cameras[0].K[0] * params.baseline / params.depth_max;
-    params.disparity_max = cameras[0].K[0] * params.baseline / params.depth_min;
+    // if (params.geom_consistency) {
+    //     depths.clear();
 
-    if (params.geom_consistency) {
-        depths.clear();
+    //     std::stringstream result_path;
+    //     result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
+    //                 << problem.ref_image_id;
+    //     std::string result_folder = result_path.str();
+    //     std::string suffix        = "/depths.dmb";
+    //     if (params.multi_geometry) { suffix = "/depths_geom.dmb"; }
+    //     std::string depth_path = result_folder + suffix;
+    //     cv::Mat_<float> ref_depth;
+    //     readDepthDmb(depth_path, ref_depth);
+    //     depths.push_back(ref_depth);
 
-        std::stringstream result_path;
-        result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-                    << problem.ref_image_id;
-        std::string result_folder = result_path.str();
-        std::string suffix        = "/depths.dmb";
-        if (params.multi_geometry) { suffix = "/depths_geom.dmb"; }
-        std::string depth_path = result_folder + suffix;
-        cv::Mat_<float> ref_depth;
-        readDepthDmb(depth_path, ref_depth);
-        depths.push_back(ref_depth);
-
-        size_t num_src_images = problem.src_image_ids.size();
-        for (size_t i = 0; i < num_src_images; ++i) {
-            std::stringstream result_path;
-            result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-                        << problem.src_image_ids[i];
-            std::string result_folder = result_path.str();
-            std::string depth_path    = result_folder + suffix;
-            cv::Mat_<float> depth;
-            readDepthDmb(depth_path, depth);
-            depths.push_back(depth);
-        }
-    }
+    //     size_t num_src_images = problem.src_image_ids.size();
+    //     for (size_t i = 0; i < num_src_images; ++i) {
+    //         std::stringstream result_path;
+    //         result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
+    //                     << problem.src_image_ids[i];
+    //         std::string result_folder = result_path.str();
+    //         std::string depth_path    = result_folder + suffix;
+    //         cv::Mat_<float> depth;
+    //         readDepthDmb(depth_path, depth);
+    //         depths.push_back(depth);
+    //     }
+    // }
 }
 
 // void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem &problem) {

@@ -59,6 +59,24 @@ void PMMVS::load_samples(const std::string &dense_folder, const vector<Problem> 
     }
 }
 
+
+void PMMVS::load_depths(const std::string &dense_folder, const vector<Problem> problems) {
+    all_depths.clear();
+
+    const std::string suffix = params.multi_geometry ? "/depths_geom.dmb" : "/depths.dmb";
+    size_t num_problems = problems.size();
+    for (size_t i = 0; i < num_problems; ++i) {
+        std::stringstream result_path;
+        result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
+                    << problems[i].ref_image_id;
+        std::string result_folder = result_path.str();
+        std::string depth_path    = result_folder + suffix;
+        cv::Mat_<float> depth;
+        readDepthDmb(depth_path, depth);
+        all_depths.push_back(depth);
+    }
+}
+
 void process_problem(
     const std::string dense_folder,
     const Problem problem,
