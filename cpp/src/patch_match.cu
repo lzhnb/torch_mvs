@@ -1,4 +1,4 @@
-#include "ACMP.h"
+#include "utils.h"
 
 __device__ void sort_small(float *d, const int n) {
     int j;

@@ -3,8 +3,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "ACMP.h"
-#include "main.h"
+#include "utils.h"
+#include "launch.h"
 #include "ndarray_converter.h"
 
 namespace py = pybind11;

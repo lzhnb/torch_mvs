@@ -1,7 +1,7 @@
 #ifndef _ACMP_H_
 #define _ACMP_H_
 
-#include "main.h"
+#include "launch.h"
 
 int readDepthDmb(const std::string file_path, cv::Mat_<float> &depth);
 int readNormalDmb(const std::string file_path, cv::Mat_<cv::Vec3f> &normal);
