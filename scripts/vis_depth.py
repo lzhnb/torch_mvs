@@ -20,14 +20,7 @@ def vis_depth_norm(
     cames_list.sort(key=lambda x: int(x.split(".")[0]))
 
     # Load dirs
-    cames = [np.loadtxt(os.path.join(cames_dir, camefile)) for camefile in cames_list]
     intrinsic = np.loadtxt(os.path.join(data_dir, "intrinsic.txt"))
-    depth_norms = [
-        np.load(os.path.join(depth_norm_dir, f"{int(camefile[:-4]):04d}.npy"))
-        for camefile in cames_list
-    ]
-
-    # suffix = depth_norm_dir.replace("/", "")[-3:]
 
     # Gen rays
     fx = intrinsic[0, 0]
@@ -50,14 +43,17 @@ def vis_depth_norm(
     # Get points
     points_all = []
     points_all_filter = []
-    for extrinsic, depthnorm in tqdm(zip(cames, depth_norms)):
+
+    for cam_file in tqdm(cames_list):
+        extrinsic = np.loadtxt(os.path.join(cames_dir, cam_file))
+        depth_norm = np.load(os.path.join(depth_norm_dir, f"{int(cam_file[:-4]):04d}.npy"))
         origins = extrinsic[:3, 3]  # [3]
         origins = np.tile(origins, (H * W, 1))  # [H * W, 3]
         rot_mat = extrinsic[:3, :3]
         dirs = dirs_ @ (rot_mat.T)  # [H * W, 3]
 
-        depth = depthnorm[..., :1].reshape(-1, 1)
-        normal = depthnorm[..., 1:].reshape(-1, 3)
+        depth = depth_norm[..., :1].reshape(-1, 1)
+        normal = depth_norm[..., 1:].reshape(-1, 3)
         depth_mask = (depth > 0).squeeze()
         points = origins[depth_mask] + depth[depth_mask] * dirs[depth_mask]
 
