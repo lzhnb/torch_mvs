@@ -25,9 +25,6 @@ void StoreColorPlyFileBinaryPointCloud(
 void CudaSafeCall(const cudaError_t error, const std::string &file, const int line);
 void CudaCheckError(const char *file, const int line);
 
-struct cudaTextureObjects {
-    cudaTextureObject_t images[MAX_IMAGES];
-};
 
 struct PatchMatchParams {
     int max_iterations    = 3;

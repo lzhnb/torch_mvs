@@ -576,7 +576,7 @@ __device__ float ComputeGeomConsistencyCost(
 }
 
 __global__ void RandomInitialization(
-    cudaTextureObjects *texture_objects,
+    cudaTextureObject_t *texture_images,
     Camera *cameras,
     float4 *plane_hypotheses,
     float *costs,
@@ -604,7 +604,7 @@ __global__ void RandomInitialization(
         plane_hypothesis.w       = GetDistance2Origin(cameras[0], p, depth, plane_hypothesis);
         plane_hypotheses[center] = plane_hypothesis;
         costs[center]            = ComputeMultiViewInitialCostandSelectedViews(
-            texture_objects[0].images,
+            texture_images,
             cameras,
             p,
             plane_hypotheses[center],
@@ -626,7 +626,7 @@ __global__ void RandomInitialization(
             plane_hypothesis_perturbed.w = depth_perturbed;
             plane_hypotheses[center]     = plane_hypothesis_perturbed;
             costs[center]                = ComputeMultiViewInitialCostandSelectedViews(
-                texture_objects[0].images,
+                texture_images,
                 cameras,
                 p,
                 plane_hypotheses[center],
@@ -638,7 +638,7 @@ __global__ void RandomInitialization(
             plane_hypothesis.w       = GetDistance2Origin(cameras[0], p, depth, plane_hypothesis);
             plane_hypotheses[center] = plane_hypothesis;
             costs[center]            = ComputeMultiViewInitialCostandSelectedViews(
-                texture_objects[0].images,
+                texture_images,
                 cameras,
                 p,
                 plane_hypotheses[center],
@@ -649,7 +649,7 @@ __global__ void RandomInitialization(
         plane_hypotheses[center] = GenerateRandomPlaneHypothesis(
             cameras[0], p, &rand_states[center], params.depth_min, params.depth_max);
         costs[center] = ComputeMultiViewInitialCostandSelectedViews(
-            texture_objects[0].images,
+            texture_images,
             cameras,
             p,
             plane_hypotheses[center],
@@ -1207,8 +1207,8 @@ __device__ void CheckerboardPropagation(
 }
 
 __global__ void BlackPixelUpdate(
-    cudaTextureObjects *texture_objects,
-    cudaTextureObjects *texture_depths,
+    cudaTextureObject_t *texture_images,
+    cudaTextureObject_t *texture_depths,
     Camera *cameras,
     float4 *plane_hypotheses,
     float *costs,
@@ -1227,8 +1227,8 @@ __global__ void BlackPixelUpdate(
     }
 
     CheckerboardPropagation(
-        texture_objects[0].images,
-        texture_depths[0].images,
+        texture_images,
+        texture_depths,
         cameras,
         plane_hypotheses,
         costs,
@@ -1242,8 +1242,8 @@ __global__ void BlackPixelUpdate(
 }
 
 __global__ void RedPixelUpdate(
-    cudaTextureObjects *texture_objects,
-    cudaTextureObjects *texture_depths,
+    cudaTextureObject_t *texture_images,
+    cudaTextureObject_t *texture_depths,
     Camera *cameras,
     float4 *plane_hypotheses,
     float *costs,
@@ -1262,8 +1262,8 @@ __global__ void RedPixelUpdate(
     }
 
     CheckerboardPropagation(
-        texture_objects[0].images,
-        texture_depths[0].images,
+        texture_images,
+        texture_depths,
         cameras,
         plane_hypotheses,
         costs,
@@ -1452,7 +1452,7 @@ void PMMVS::RunPatchMatch() {
     // std::cout << "max_iterations: " << max_iterations << std::endl;
 
     RandomInitialization<<<grid_size_randinit, block_size_randinit>>>(
-        texture_objects_cuda,
+        texture_images_cuda,
         cameras_cuda,
         plane_hypotheses_cuda,
         costs_cuda,
@@ -1465,7 +1465,7 @@ void PMMVS::RunPatchMatch() {
 
     for (int i = 0; i < max_iterations; ++i) {
         BlackPixelUpdate<<<grid_size_checkerboard, block_size_checkerboard>>>(
-            texture_objects_cuda,
+            texture_images_cuda,
             texture_depths_cuda,
             cameras_cuda,
             plane_hypotheses_cuda,
@@ -1478,7 +1478,7 @@ void PMMVS::RunPatchMatch() {
             i);
         CUDA_SAFE_CALL(cudaDeviceSynchronize());
         RedPixelUpdate<<<grid_size_checkerboard, block_size_checkerboard>>>(
-            texture_objects_cuda,
+            texture_images_cuda,
             texture_depths_cuda,
             cameras_cuda,
             plane_hypotheses_cuda,

@@ -44,8 +44,8 @@ private:
     vector<cv::Mat> images;
     vector<cv::Mat> depths;
     vector<Camera> cameras;
-    cudaTextureObjects texture_objects_host;
-    cudaTextureObjects texture_depths_host;
+    cudaTextureObject_t texture_images_host[MAX_IMAGES];
+    cudaTextureObject_t texture_depths_host[MAX_IMAGES];
     float4 *plane_hypotheses_host;
     float *costs_host;
     float4 *prior_planes_host;
@@ -54,8 +54,8 @@ private:
     Camera *cameras_cuda;
     cudaArray *cuArray[MAX_IMAGES];
     cudaArray *cuDepthArray[MAX_IMAGES];
-    cudaTextureObjects *texture_objects_cuda;
-    cudaTextureObjects *texture_depths_cuda;
+    cudaTextureObject_t *texture_images_cuda;
+    cudaTextureObject_t *texture_depths_cuda;
     float4 *plane_hypotheses_cuda;
     float *costs_cuda;
     curandState *rand_states_cuda;

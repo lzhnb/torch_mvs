@@ -397,10 +397,9 @@ void PMMVS::release() {
     delete[] costs_host;
 
     for (int i = 0; i < num_images; ++i) {
-        cudaDestroyTextureObject(texture_objects_host.images[i]);
         cudaFreeArray(cuArray[i]);
     }
-    cudaFree(texture_objects_cuda);
+    cudaFree(texture_images_cuda);
     cudaFree(cameras_cuda);
     cudaFree(plane_hypotheses_cuda);
     cudaFree(costs_cuda);
@@ -410,7 +409,6 @@ void PMMVS::release() {
 
     if (params.geom_consistency) {
         for (int i = 0; i < num_images; ++i) {
-            cudaDestroyTextureObject(texture_depths_host.images[i]);
             cudaFreeArray(cuDepthArray[i]);
         }
         cudaFree(texture_depths_cuda);
@@ -606,6 +604,7 @@ void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem 
 void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Problem &problem) {
     num_images = (int)images.size();
 
+    size_t image_size = 0;
     for (int i = 0; i < num_images; ++i) {
         int rows = images[i].rows;
         int cols = images[i].cols;
@@ -636,13 +635,14 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
         texDesc.readMode         = cudaReadModeElementType;
         texDesc.normalizedCoords = 0;
 
-        cudaCreateTextureObject(&(texture_objects_host.images[i]), &resDesc, &texDesc, NULL);
+        cudaCreateTextureObject(&(texture_images_host[i]), &resDesc, &texDesc, NULL);
+        image_size += sizeof(texture_images_host[i]);
     }
-    cudaMalloc((void **)&texture_objects_cuda, sizeof(cudaTextureObjects));
+    cudaMalloc((void **)&texture_images_cuda, image_size);
     cudaMemcpy(
-        texture_objects_cuda,
-        &texture_objects_host,
-        sizeof(cudaTextureObjects),
+        texture_images_cuda,
+        texture_images_host,
+        image_size,
         cudaMemcpyHostToDevice);
 
     cudaMalloc((void **)&cameras_cuda, sizeof(Camera) * (num_images));
@@ -666,6 +666,7 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
         sizeof(float) * (cameras[0].height * cameras[0].width));  // Updated by Qingshan 2020-01-15
 
     if (params.geom_consistency) {
+        size_t depth_size = 0;
         for (int i = 0; i < num_images; ++i) {
             int rows = depths[i].rows;
             int cols = depths[i].cols;
@@ -696,13 +697,14 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
             texDesc.readMode         = cudaReadModeElementType;
             texDesc.normalizedCoords = 0;
 
-            cudaCreateTextureObject(&(texture_depths_host.images[i]), &resDesc, &texDesc, NULL);
+            cudaCreateTextureObject(&(texture_depths_host[i]), &resDesc, &texDesc, NULL);
+            depth_size += sizeof(texture_depths_host[i]);
         }
-        cudaMalloc((void **)&texture_depths_cuda, sizeof(cudaTextureObjects));
+        cudaMalloc((void **)&texture_depths_cuda, depth_size);
         cudaMemcpy(
             texture_depths_cuda,
-            &texture_depths_host,
-            sizeof(cudaTextureObjects),
+            texture_depths_host,
+            depth_size,
             cudaMemcpyHostToDevice);
 
         std::stringstream result_path;
