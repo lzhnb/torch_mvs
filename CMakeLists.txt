@@ -18,6 +18,7 @@ cuda_add_library(
     cpp/src/ndarray_converter.cpp
     cpp/src/mvs.cpp
     cpp/src/patch_match.cu
+    cpp/src/fusion.cu
     cpp/src/launch.cpp)
 
 target_include_directories(
