@@ -8,24 +8,23 @@ vector<Problem> generate_sample_list(const std::string cluster_list_path) {
 
     std::ifstream file(cluster_list_path);
 
-    int num_images;
+    int32_t num_images;
     file >> num_images;
 
-    for (int i = 0; i < num_images; ++i) {
+    for (int32_t i = 0; i < num_images; ++i) {
         Problem problem;
-        problem.src_image_ids.clear();
         file >> problem.ref_image_id;
 
-        int num_src_images;
+        int32_t num_src_images;
         file >> num_src_images;
-        for (int j = 0; j < num_src_images; ++j) {
-            int id;
+        problem.num_ngb = 0;
+        for (int32_t j = 0; j < num_src_images; ++j) {
+            int32_t id;
             float score;
             file >> id >> score;
-            if (score <= 0.0f) {
-                continue;
-            }
-            problem.src_image_ids.push_back(id);
+            if (score <= 0.0f) { continue; }
+            problem.src_image_ids[j] = id;
+            ++problem.num_ngb;
         }
         problems.push_back(problem);
     }
@@ -59,12 +58,11 @@ void PMMVS::load_samples(const std::string &dense_folder, const vector<Problem> 
     }
 }
 
-
 void PMMVS::load_depths(const std::string &dense_folder, const vector<Problem> problems) {
     all_depths.clear();
 
     const std::string suffix = params.multi_geometry ? "/depths_geom.dmb" : "/depths.dmb";
-    size_t num_problems = problems.size();
+    size_t num_problems      = problems.size();
     for (size_t i = 0; i < num_problems; ++i) {
         std::stringstream result_path;
         result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
@@ -94,24 +92,22 @@ void process_problem(
     mkdir(result_folder.c_str(), 0777);
 
     // PMMVS mvs;
-    if (geom_consistency) {
-        mvs.SetGeomConsistencyParams(multi_geometrty);
-    }
+    if (geom_consistency) { mvs.SetGeomConsistencyParams(multi_geometrty); }
     mvs.InuputInitialization(dense_folder, problem);
 
     mvs.CudaSpaceInitialization(dense_folder, problem);
     mvs.RunPatchMatch();
 
-    const int width  = mvs.GetReferenceImageWidth();
-    const int height = mvs.GetReferenceImageHeight();
+    const int32_t width  = mvs.GetReferenceImageWidth();
+    const int32_t height = mvs.GetReferenceImageHeight();
 
     cv::Mat_<float> depths      = cv::Mat::zeros(height, width, CV_32FC1);
     cv::Mat_<cv::Vec3f> normals = cv::Mat::zeros(height, width, CV_32FC3);
     cv::Mat_<float> costs       = cv::Mat::zeros(height, width, CV_32FC1);
 
-    for (int col = 0; col < width; ++col) {
-        for (int row = 0; row < height; ++row) {
-            int center              = row * width + col;
+    for (int32_t col = 0; col < width; ++col) {
+        for (int32_t row = 0; row < height; ++row) {
+            int32_t center          = row * width + col;
             float4 plane_hypothesis = mvs.GetPlaneHypothesis(center);
             depths(row, col)        = plane_hypothesis.w;
             normals(row, col) =
@@ -170,10 +166,10 @@ void process_problem(
 
                 for (float p = 0; p < 1.0; p += step) {
                     for (float q = 0; q < 1.0 - p; q += step) {
-                        int x = p * triangle.pt1.x + q * triangle.pt2.x +
-                                (1.0 - p - q) * triangle.pt3.x;
-                        int y = p * triangle.pt1.y + q * triangle.pt2.y +
-                                (1.0 - p - q) * triangle.pt3.y;
+                        int32_t x = p * triangle.pt1.x + q * triangle.pt2.x +
+                                    (1.0 - p - q) * triangle.pt3.x;
+                        int32_t y = p * triangle.pt1.y + q * triangle.pt2.y +
+                                    (1.0 - p - q) * triangle.pt3.y;
                         mask_tri(y, x) =
                             idx + 1.0;  // To distinguish from the label of non-triangulated areas
                     }
@@ -187,8 +183,8 @@ void process_problem(
         }
 
         cv::Mat_<float> priordepths = cv::Mat::zeros(height, width, CV_32FC1);
-        for (int i = 0; i < width; ++i) {
-            for (int j = 0; j < height; ++j) {
+        for (int32_t i = 0; i < width; ++i) {
+            for (int32_t j = 0; j < height; ++j) {
                 if (mask_tri(j, i) > 0) {
                     float d = mvs.GetDepthFromPlaneParam(planeParams_tri[mask_tri(j, i) - 1], i, j);
                     if (d <= mvs.params.depth_max && d >= mvs.params.depth_min) {
@@ -205,9 +201,9 @@ void process_problem(
         mvs.CudaPlanarPriorInitialization(planeParams_tri, mask_tri);
         mvs.RunPatchMatch();
 
-        for (int col = 0; col < width; ++col) {
-            for (int row = 0; row < height; ++row) {
-                int center              = row * width + col;
+        for (int32_t col = 0; col < width; ++col) {
+            for (int32_t row = 0; row < height; ++row) {
+                int32_t center          = row * width + col;
                 float4 plane_hypothesis = mvs.GetPlaneHypothesis(center);
                 depths(row, col)        = plane_hypothesis.w;
                 normals(row, col) =
@@ -218,9 +214,7 @@ void process_problem(
     }
 
     std::string suffix = "/depths.dmb";
-    if (geom_consistency) {
-        suffix = "/depths_geom.dmb";
-    }
+    if (geom_consistency) { suffix = "/depths_geom.dmb"; }
     std::string depth_path  = result_folder + suffix;
     std::string normal_path = result_folder + "/normals.dmb";
     std::string cost_path   = result_folder + "/costs.dmb";
@@ -270,15 +264,15 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
                     << problems[i].ref_image_id;
         std::string result_folder = result_path.str();
         std::string suffix        = "/depths.dmb";
-        if (geom_consistency) {
-            suffix = "/depths_geom.dmb";
-        }
+        if (geom_consistency) { suffix = "/depths_geom.dmb"; }
         std::string depth_path  = result_folder + suffix;
         std::string normal_path = result_folder + "/normals.dmb";
         cv::Mat_<float> depth;
         cv::Mat_<cv::Vec3f> normal;
         readDepthDmb(depth_path, depth);
         readNormalDmb(normal_path, normal);
+        camera.height = depth.rows;
+        camera.width  = depth.cols;
 
         cv::Mat_<cv::Vec3b> scaled_image;
         RescaleImageAndCamera(image, scaled_image, depth, camera);
@@ -300,17 +294,17 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
     for (size_t i = 0; i < num_images; ++i) {
         std::cout << "Fusing image " << std::setw(4) << std::setfill('0') << i << "..."
                   << std::endl;
-        const int cols = depths[i].cols;
-        const int rows = depths[i].rows;
-        int num_ngb    = problems[i].src_image_ids.size();
+        const int32_t cols    = depths[i].cols;
+        const int32_t rows    = depths[i].rows;
+        const int32_t num_ngb = problems[i].num_ngb;
         vector<int2> used_list(num_ngb, make_int2(-1, -1));
 
         // output
         cv::Mat output_proj_depth  = cv::Mat::zeros(rows, cols, CV_32FC1);
         cv::Mat output_proj_normal = cv::Mat::zeros(rows, cols, CV_32FC3);
 
-        for (int r = 0; r < rows; ++r) {
-            for (int c = 0; c < cols; ++c) {
+        for (int32_t r = 0; r < rows; ++r) {
+            for (int32_t c = 0; c < cols; ++c) {
                 if (masks[i].at<uchar>(r, c) == 1) continue;
                 float ref_depth      = depths[i].at<float>(r, c);
                 cv::Vec3f ref_normal = normals[i].at<cv::Vec3f>(r, c);
@@ -321,20 +315,20 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
                 float3 consistent_point     = PointX;
                 cv::Vec3f consistent_normal = ref_normal;
                 float consistent_color[3]   = {
-                      (float)images[i].at<cv::Vec3b>(r, c)[0],
-                      (float)images[i].at<cv::Vec3b>(r, c)[1],
-                      (float)images[i].at<cv::Vec3b>(r, c)[2]};
-                int num_consistent = 0;
+                    (float)images[i].at<cv::Vec3b>(r, c)[0],
+                    (float)images[i].at<cv::Vec3b>(r, c)[1],
+                    (float)images[i].at<cv::Vec3b>(r, c)[2]};
+                int32_t num_consistent = 0;
 
-                for (int j = 0; j < num_ngb; ++j) {
-                    int src_id         = problems[i].src_image_ids[j];
-                    const int src_cols = depths[src_id].cols;
-                    const int src_rows = depths[src_id].rows;
+                for (int32_t j = 0; j < num_ngb; ++j) {
+                    int32_t src_id         = problems[i].src_image_ids[j];
+                    const int32_t src_cols = depths[src_id].cols;
+                    const int32_t src_rows = depths[src_id].rows;
                     float2 point;
                     float proj_depth;
                     ProjectonCamera(PointX, cameras[src_id], point, proj_depth);
-                    int src_r = int(point.y + 0.5f);
-                    int src_c = int(point.x + 0.5f);
+                    int32_t src_r = int32_t(point.y + 0.5f);
+                    int32_t src_c = int32_t(point.x + 0.5f);
                     if (src_c >= 0 && src_c < src_cols && src_r >= 0 && src_r < src_rows) {
                         if (masks[src_id].at<uchar>(src_r, src_c) == 1) continue;
 
@@ -397,7 +391,7 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
                         make_float3(consistent_color[0], consistent_color[1], consistent_color[2]);
                     PointCloud.push_back(point3D);
 
-                    for (int j = 0; j < num_ngb; ++j) {
+                    for (int32_t j = 0; j < num_ngb; ++j) {
                         if (used_list[j].x == -1) continue;
                         masks[problems[i].src_image_ids[j]].at<uchar>(
                             used_list[j].y, used_list[j].x) = 1;

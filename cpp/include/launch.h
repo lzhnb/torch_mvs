@@ -36,15 +36,16 @@ struct Camera {
     float K[9];
     float R[9];
     float t[3];
-    int height;
-    int width;
+    int32_t height;
+    int32_t width;
     float depth_min;
     float depth_max;
 };
 
 struct Problem {
-    int ref_image_id;
-    vector<int> src_image_ids;
+    int32_t ref_image_id;
+    int32_t src_image_ids[MAX_IMAGES];
+    int32_t num_ngb;
 };
 
 struct Triangle {

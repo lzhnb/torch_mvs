@@ -24,7 +24,8 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
     py::class_<Problem>(m, "Problem")
         .def(py::init<>())
         .def_readwrite("ref_image_id", &Problem::ref_image_id)
-        .def_readwrite("src_image_ids", &Problem::src_image_ids);
+        // .def_readwrite("src_image_ids", &Problem::src_image_ids)
+        .def_readwrite("num_ngb", &Problem::num_ngb);
 
     m.def("generate_sample_list", &generate_sample_list);
     m.def("process_problem", &process_problem);

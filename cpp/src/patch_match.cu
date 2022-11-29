@@ -2,18 +2,18 @@
 
 namespace mvs {
 
-__device__ void sort_small(float *d, const int n) {
-    int j;
-    for (int i = 1; i < n; i++) {
+__device__ void sort_small(float *d, const int32_t n) {
+    int32_t j;
+    for (int32_t i = 1; i < n; i++) {
         float tmp = d[i];
         for (j = i; j >= 1 && tmp < d[j - 1]; j--) d[j] = d[j - 1];
         d[j] = tmp;
     }
 }
 
-__device__ void sort_small_weighted(float *d, float *w, int n) {
-    int j;
-    for (int i = 1; i < n; i++) {
+__device__ void sort_small_weighted(float *d, float *w, int32_t n) {
+    int32_t j;
+    for (int32_t i = 1; i < n; i++) {
         float tmp   = d[i];
         float tmp_w = w[i];
         for (j = i; j >= 1 && tmp < d[j - 1]; j--) {
@@ -25,10 +25,10 @@ __device__ void sort_small_weighted(float *d, float *w, int n) {
     }
 }
 
-__device__ int FindMinCostIndex(const float *costs, const int n) {
-    float min_cost   = costs[0];
-    int min_cost_idx = 0;
-    for (int idx = 1; idx < n; ++idx) {
+__device__ int32_t FindMinCostIndex(const float *costs, const int32_t n) {
+    float min_cost       = costs[0];
+    int32_t min_cost_idx = 0;
+    for (int32_t idx = 1; idx < n; ++idx) {
         if (costs[idx] <= min_cost) {
             min_cost     = costs[idx];
             min_cost_idx = idx;
@@ -37,10 +37,10 @@ __device__ int FindMinCostIndex(const float *costs, const int n) {
     return min_cost_idx;
 }
 
-__device__ int FindMaxCostIndex(const float *costs, const int n) {
-    float max_cost   = costs[0];
-    int max_cost_idx = 0;
-    for (int idx = 1; idx < n; ++idx) {
+__device__ int32_t FindMaxCostIndex(const float *costs, const int32_t n) {
+    float max_cost       = costs[0];
+    int32_t max_cost_idx = 0;
+    for (int32_t idx = 1; idx < n; ++idx) {
         if (costs[idx] >= max_cost) {
             max_cost     = costs[idx];
             max_cost_idx = idx;
@@ -49,11 +49,13 @@ __device__ int FindMaxCostIndex(const float *costs, const int n) {
     return max_cost_idx;
 }
 
-__device__ void setBit(unsigned int &input, const unsigned int n) {
-    input |= (unsigned int)(1 << n);
+__device__ void setBit(uint32_t &input, const uint32_t n) {
+    input |= (uint32_t)(1 << n);
 }
 
-__device__ int isSet(unsigned int input, const unsigned int n) { return (input >> n) & 1; }
+__device__ int32_t isSet(uint32_t input, const uint32_t n) {
+    return (input >> n) & 1;
+}
 
 __device__ void Mat33DotVec3(const float mat[9], const float4 vec, float4 *result) {
     result->x = mat[0] * vec.x + mat[1] * vec.y + mat[2] * vec.z;
@@ -73,15 +75,15 @@ __device__ void NormalizeVec3(float4 *vec) {
     vec->z *= inverse_sqrt;
 }
 
-__device__ void TransformPDFToCDF(float *probs, const int num_probs) {
+__device__ void TransformPDFToCDF(float *probs, const int32_t num_probs) {
     float prob_sum = 0.0f;
-    for (int i = 0; i < num_probs; ++i) {
+    for (int32_t i = 0; i < num_probs; ++i) {
         prob_sum += probs[i];
     }
     const float inv_prob_sum = 1.0f / prob_sum;
 
     float cum_prob = 0.0f;
-    for (int i = 0; i < num_probs; ++i) {
+    for (int32_t i = 0; i < num_probs; ++i) {
         const float prob = probs[i] * inv_prob_sum;
         cum_prob += prob;
         probs[i] = cum_prob;
@@ -376,7 +378,7 @@ __device__ float ComputeBilateralNCC(
     const float4 plane_hypothesis,
     const PatchMatchParams params) {
     const float cost_max = 2.0f;
-    int radius           = params.patch_size / 2;
+    int32_t radius       = params.patch_size / 2;
 
     float H[9];
     ComputeHomography(ref_camera, src_camera, plane_hypothesis, H);
@@ -395,7 +397,7 @@ __device__ float ComputeBilateralNCC(
         float bilateral_weight_sum = 0.0f;
         const float ref_center_pix = tex2D<float>(ref_image, p.x + 0.5f, p.y + 0.5f);
 
-        for (int i = -radius; i < radius + 1; i += params.radius_increment) {
+        for (int32_t i = -radius; i < radius + 1; i += params.radius_increment) {
             float sum_ref_row              = 0.0f;
             float sum_src_row              = 0.0f;
             float sum_ref_ref_row          = 0.0f;
@@ -403,7 +405,7 @@ __device__ float ComputeBilateralNCC(
             float sum_ref_src_row          = 0.0f;
             float bilateral_weight_sum_row = 0.0f;
 
-            for (int j = -radius; j < radius + 1; j += params.radius_increment) {
+            for (int32_t j = -radius; j < radius + 1; j += params.radius_increment) {
                 const int2 ref_pt   = make_int2(p.x + i, p.y + j);
                 const float ref_pix = tex2D<float>(ref_image, ref_pt.x + 0.5f, ref_pt.y + 0.5f);
                 float2 src_pt       = ComputeCorrespondingPoint(H, ref_pt);
@@ -453,15 +455,15 @@ __device__ float ComputeMultiViewInitialCostandSelectedViews(
     const Camera *cameras,
     const int2 p,
     const float4 plane_hypothesis,
-    unsigned int *selected_views,
+    uint32_t *selected_views,
     const PatchMatchParams params) {
     float cost_max             = 2.0f;
     float cost_vector[32]      = {2.0f};
     float cost_vector_copy[32] = {2.0f};
-    int cost_count             = 0;
-    int num_valid_views        = 0;
+    int32_t cost_count         = 0;
+    int32_t num_valid_views    = 0;
 
-    for (int i = 1; i < params.num_images; ++i) {
+    for (int32_t i = 1; i < params.num_images; ++i) {
         float c = ComputeBilateralNCC(
             images[0], cameras[0], images[i], cameras[i], p, plane_hypothesis, params);
         cost_vector[i - 1]      = c;
@@ -475,14 +477,14 @@ __device__ float ComputeMultiViewInitialCostandSelectedViews(
     sort_small(cost_vector, cost_count);
     *selected_views = 0;
 
-    int top_k = min(num_valid_views, params.top_k);
+    int32_t top_k = min(num_valid_views, params.top_k);
     if (top_k > 0) {
         float cost = 0.0f;
-        for (int i = 0; i < top_k; ++i) {
+        for (int32_t i = 0; i < top_k; ++i) {
             cost += cost_vector[i];
         }
         float cost_threshold = cost_vector[top_k - 1];
-        for (int i = 0; i < params.num_images - 1; ++i) {
+        for (int32_t i = 0; i < params.num_images - 1; ++i) {
             if (cost_vector_copy[i] <= cost_threshold) {
                 setBit(*selected_views, i);
             }
@@ -500,7 +502,7 @@ __device__ void ComputeMultiViewCostVector(
     const float4 plane_hypothesis,
     float *cost_vector,
     const PatchMatchParams params) {
-    for (int i = 1; i < params.num_images; ++i) {
+    for (int32_t i = 1; i < params.num_images; ++i) {
         cost_vector[i - 1] = ComputeBilateralNCC(
             images[0], cameras[0], images[i], cameras[i], p, plane_hypothesis, params);
     }
@@ -581,20 +583,20 @@ __global__ void RandomInitialization(
     float4 *plane_hypotheses,
     float *costs,
     curandState *rand_states,
-    unsigned int *selected_views,
+    uint32_t *selected_views,
     float4 *prior_planes,
-    unsigned int *plane_masks,
+    uint32_t *plane_masks,
     const PatchMatchParams params) {
     const int2 p =
         make_int2(blockIdx.x * blockDim.x + threadIdx.x, blockIdx.y * blockDim.y + threadIdx.y);
-    int width  = cameras[0].width;
-    int height = cameras[0].height;
+    int32_t width  = cameras[0].width;
+    int32_t height = cameras[0].height;
 
     if (p.x >= width || p.y >= height) {
         return;
     }
 
-    const int center = p.y * width + p.x;
+    const int32_t center = p.y * width + p.x;
     curand_init(clock64(), p.y, p.x, &rand_states[center]);
 
     if (params.geom_consistency) {
@@ -604,12 +606,7 @@ __global__ void RandomInitialization(
         plane_hypothesis.w       = GetDistance2Origin(cameras[0], p, depth, plane_hypothesis);
         plane_hypotheses[center] = plane_hypothesis;
         costs[center]            = ComputeMultiViewInitialCostandSelectedViews(
-            texture_images,
-            cameras,
-            p,
-            plane_hypotheses[center],
-            &selected_views[center],
-            params);
+            texture_images, cameras, p, plane_hypotheses[center], &selected_views[center], params);
     } else if (params.planar_prior) {
         if (plane_masks[center] > 0 && costs[center] >= 0.1f) {
             float perturbation = 0.02f;
@@ -649,12 +646,7 @@ __global__ void RandomInitialization(
         plane_hypotheses[center] = GenerateRandomPlaneHypothesis(
             cameras[0], p, &rand_states[center], params.depth_min, params.depth_max);
         costs[center] = ComputeMultiViewInitialCostandSelectedViews(
-            texture_images,
-            cameras,
-            p,
-            plane_hypotheses[center],
-            &selected_views[center],
-            params);
+            texture_images, cameras, p, plane_hypotheses[center], &selected_views[center], params);
     }
 }
 
@@ -669,12 +661,12 @@ __device__ void PlaneHypothesisRefinement(
     const float *view_weights,
     const float weight_norm,
     float4 *prior_planes,
-    unsigned int *plane_masks,
+    uint32_t *plane_masks,
     float *restricted_cost,
     const int2 p,
     const PatchMatchParams params) {
-    float perturbation = 0.02f;
-    const int center   = p.y * cameras[0].width + p.x;
+    float perturbation   = 0.02f;
+    const int32_t center = p.y * cameras[0].width + p.x;
 
     float gamma                   = 0.5f;
     float depth_sigma             = (params.depth_max - params.depth_min) / 64.0f;
@@ -712,7 +704,7 @@ __device__ void PlaneHypothesisRefinement(
             M_PI);  // GeneratePertubedPlaneHypothesis(cameras[0], p, rand_state, perturbation,
                     // *plane_hypothesis, *depth, params.depth_min, params.depth_max);
 
-    const int num_planes       = 5;
+    const int32_t num_planes   = 5;
     float depths[num_planes]   = {depth_rand, *depth, depth_rand, *depth, depth_perturbed};
     float4 normals[num_planes] = {
         *plane_hypothesis,
@@ -721,7 +713,7 @@ __device__ void PlaneHypothesisRefinement(
         plane_hypothesis_perturbed,
         *plane_hypothesis};
 
-    for (int i = 0; i < num_planes; ++i) {
+    for (int32_t i = 0; i < num_planes; ++i) {
         float cost_vector[32]        = {2.0f};
         float4 temp_plane_hypothesis = normals[i];
         temp_plane_hypothesis.w =
@@ -729,7 +721,7 @@ __device__ void PlaneHypothesisRefinement(
         ComputeMultiViewCostVector(images, cameras, p, temp_plane_hypothesis, cost_vector, params);
 
         float temp_cost = 0.0f;
-        for (int j = 0; j < params.num_images - 1; ++j) {
+        for (int32_t j = 0; j < params.num_images - 1; ++j) {
             if (view_weights[j] > 0) {
                 if (params.geom_consistency) {
                     temp_cost +=
@@ -779,37 +771,37 @@ __device__ void CheckerboardPropagation(
     float4 *plane_hypotheses,
     float *costs,
     curandState *rand_states,
-    unsigned int *selected_views,
+    uint32_t *selected_views,
     float4 *prior_planes,
-    unsigned int *plane_masks,
+    uint32_t *plane_masks,
     const int2 p,
     const PatchMatchParams params,
-    const int iter) {
-    int width  = cameras[0].width;
-    int height = cameras[0].height;
+    const int32_t iter) {
+    int32_t width  = cameras[0].width;
+    int32_t height = cameras[0].height;
     if (p.x >= width || p.y >= height) {
         return;
     }
 
-    const int center = p.y * width + p.x;
-    int left_near    = center - 1;
-    int left_far     = center - 3;
-    int right_near   = center + 1;
-    int right_far    = center + 3;
-    int up_near      = center - width;
-    int up_far       = center - 3 * width;
-    int down_near    = center + width;
-    int down_far     = center + 3 * width;
+    const int32_t center = p.y * width + p.x;
+    int32_t left_near    = center - 1;
+    int32_t left_far     = center - 3;
+    int32_t right_near   = center + 1;
+    int32_t right_far    = center + 3;
+    int32_t up_near      = center - width;
+    int32_t up_far       = center - 3 * width;
+    int32_t down_near    = center + width;
+    int32_t down_far     = center + 3 * width;
 
     // Adaptive Checkerboard Sampling
     float cost_array[8][32] = {2.0f};
     // 0 -- up_near, 1 -- up_far, 2 -- down_near, 3 -- down_far, 4 -- left_near, 5 -- left_far, 6 --
     // right_near, 7 -- right_far
-    bool flag[8]         = {false};
-    int num_valid_pixels = 0;
+    bool flag[8]             = {false};
+    int32_t num_valid_pixels = 0;
 
     float costMin;
-    int costMinPoint;
+    int32_t costMinPoint;
 
     // up_far
     if (p.y > 2) {
@@ -817,9 +809,9 @@ __device__ void CheckerboardPropagation(
         num_valid_pixels++;
         costMin      = costs[up_far];
         costMinPoint = up_far;
-        for (int i = 1; i < 11; ++i) {
+        for (int32_t i = 1; i < 11; ++i) {
             if (p.y > 2 + 2 * i) {
-                int pointTemp = up_far - 2 * i * width;
+                int32_t pointTemp = up_far - 2 * i * width;
                 if (costs[pointTemp] < costMin) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
@@ -837,9 +829,9 @@ __device__ void CheckerboardPropagation(
         num_valid_pixels++;
         costMin      = costs[down_far];
         costMinPoint = down_far;
-        for (int i = 1; i < 11; ++i) {
+        for (int32_t i = 1; i < 11; ++i) {
             if (p.y < height - 3 - 2 * i) {
-                int pointTemp = down_far + 2 * i * width;
+                int32_t pointTemp = down_far + 2 * i * width;
                 if (costs[pointTemp] < costMin) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
@@ -857,9 +849,9 @@ __device__ void CheckerboardPropagation(
         num_valid_pixels++;
         costMin      = costs[left_far];
         costMinPoint = left_far;
-        for (int i = 1; i < 11; ++i) {
+        for (int32_t i = 1; i < 11; ++i) {
             if (p.x > 2 + 2 * i) {
-                int pointTemp = left_far - 2 * i;
+                int32_t pointTemp = left_far - 2 * i;
                 if (costs[pointTemp] < costMin) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
@@ -877,9 +869,9 @@ __device__ void CheckerboardPropagation(
         num_valid_pixels++;
         costMin      = costs[right_far];
         costMinPoint = right_far;
-        for (int i = 1; i < 11; ++i) {
+        for (int32_t i = 1; i < 11; ++i) {
             if (p.x < width - 3 - 2 * i) {
-                int pointTemp = right_far + 2 * i;
+                int32_t pointTemp = right_far + 2 * i;
                 if (costMin < costs[pointTemp]) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
@@ -897,16 +889,16 @@ __device__ void CheckerboardPropagation(
         num_valid_pixels++;
         costMin      = costs[up_near];
         costMinPoint = up_near;
-        for (int i = 0; i < 3; ++i) {
+        for (int32_t i = 0; i < 3; ++i) {
             if (p.y > 1 + i && p.x > i) {
-                int pointTemp = up_near - (1 + i) * width - i;
+                int32_t pointTemp = up_near - (1 + i) * width - i;
                 if (costs[pointTemp] < costMin) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
                 }
             }
             if (p.y > 1 + i && p.x < width - 1 - i) {
-                int pointTemp = up_near - (1 + i) * width + i;
+                int32_t pointTemp = up_near - (1 + i) * width + i;
                 if (costs[pointTemp] < costMin) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
@@ -924,16 +916,16 @@ __device__ void CheckerboardPropagation(
         num_valid_pixels++;
         costMin      = costs[down_near];
         costMinPoint = down_near;
-        for (int i = 0; i < 3; ++i) {
+        for (int32_t i = 0; i < 3; ++i) {
             if (p.y < height - 2 - i && p.x > i) {
-                int pointTemp = down_near + (1 + i) * width - i;
+                int32_t pointTemp = down_near + (1 + i) * width - i;
                 if (costs[pointTemp] < costMin) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
                 }
             }
             if (p.y < height - 2 - i && p.x < width - 1 - i) {
-                int pointTemp = down_near + (1 + i) * width + i;
+                int32_t pointTemp = down_near + (1 + i) * width + i;
                 if (costs[pointTemp] < costMin) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
@@ -951,16 +943,16 @@ __device__ void CheckerboardPropagation(
         num_valid_pixels++;
         costMin      = costs[left_near];
         costMinPoint = left_near;
-        for (int i = 0; i < 3; ++i) {
+        for (int32_t i = 0; i < 3; ++i) {
             if (p.x > 1 + i && p.y > i) {
-                int pointTemp = left_near - (1 + i) - i * width;
+                int32_t pointTemp = left_near - (1 + i) - i * width;
                 if (costs[pointTemp] < costMin) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
                 }
             }
             if (p.x > 1 + i && p.y < height - 1 - i) {
-                int pointTemp = left_near - (1 + i) + i * width;
+                int32_t pointTemp = left_near - (1 + i) + i * width;
                 if (costs[pointTemp] < costMin) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
@@ -978,16 +970,16 @@ __device__ void CheckerboardPropagation(
         num_valid_pixels++;
         costMin      = costs[right_near];
         costMinPoint = right_near;
-        for (int i = 0; i < 3; ++i) {
+        for (int32_t i = 0; i < 3; ++i) {
             if (p.x < width - 2 - i && p.y > i) {
-                int pointTemp = right_near + (1 + i) - i * width;
+                int32_t pointTemp = right_near + (1 + i) - i * width;
                 if (costs[pointTemp] < costMin) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
                 }
             }
             if (p.x < width - 2 - i && p.y < height - 1 - i) {
-                int pointTemp = right_near + (1 + i) + i * width;
+                int32_t pointTemp = right_near + (1 + i) + i * width;
                 if (costs[pointTemp] < costMin) {
                     costMin      = costs[pointTemp];
                     costMinPoint = pointTemp;
@@ -998,16 +990,16 @@ __device__ void CheckerboardPropagation(
         ComputeMultiViewCostVector(
             images, cameras, p, plane_hypotheses[right_near], cost_array[6], params);
     }
-    const int positions[8] = {
+    const int32_t positions[8] = {
         up_near, up_far, down_near, down_far, left_near, left_far, right_near, right_far};
 
     // Multi-hypothesis Joint View Selection
     float view_weights[32]          = {0.0f};
     float view_selection_priors[32] = {0.0f};
-    int neighbor_positions[4]       = {center - width, center + width, center - 1, center + 1};
-    for (int i = 0; i < 4; ++i) {
+    int32_t neighbor_positions[4]   = {center - width, center + width, center - 1, center + 1};
+    for (int32_t i = 0; i < 4; ++i) {
         if (flag[2 * i]) {
-            for (int j = 0; j < params.num_images - 1; ++j) {
+            for (int32_t j = 0; j < params.num_images - 1; ++j) {
                 if (isSet(selected_views[neighbor_positions[i]], j) == 1) {
                     view_selection_priors[j] += 0.9f;
                 } else {
@@ -1019,11 +1011,11 @@ __device__ void CheckerboardPropagation(
 
     float sampling_probs[32] = {0.0f};
     float cost_threshold     = 0.8 * expf((iter) * (iter) / (-90.0f));
-    for (int i = 0; i < params.num_images - 1; i++) {
-        float count     = 0;
-        int count_false = 0;
-        float tmpw      = 0;
-        for (int j = 0; j < 8; j++) {
+    for (int32_t i = 0; i < params.num_images - 1; i++) {
+        float count         = 0;
+        int32_t count_false = 0;
+        float tmpw          = 0;
+        for (int32_t j = 0; j < 8; j++) {
             if (cost_array[j][i] < cost_threshold) {
                 tmpw += expf(cost_array[j][i] * cost_array[j][i] / (-0.18f));
                 count++;
@@ -1041,10 +1033,10 @@ __device__ void CheckerboardPropagation(
     }
 
     TransformPDFToCDF(sampling_probs, params.num_images - 1);
-    for (int sample = 0; sample < 15; ++sample) {
+    for (int32_t sample = 0; sample < 15; ++sample) {
         const float rand_prob = curand_uniform(&rand_states[center]) - FLT_EPSILON;
 
-        for (int image_id = 0; image_id < params.num_images - 1; ++image_id) {
+        for (int32_t image_id = 0; image_id < params.num_images - 1; ++image_id) {
             const float prob = sampling_probs[image_id];
             if (prob > rand_prob) {
                 view_weights[image_id] += 1.0f;
@@ -1053,10 +1045,10 @@ __device__ void CheckerboardPropagation(
         }
     }
 
-    unsigned int temp_selected_views = 0;
-    int num_selected_view            = 0;
-    float weight_norm                = 0;
-    for (int i = 0; i < params.num_images - 1; ++i) {
+    uint32_t temp_selected_views = 0;
+    int32_t num_selected_view            = 0;
+    float weight_norm                    = 0;
+    for (int32_t i = 0; i < params.num_images - 1; ++i) {
         if (view_weights[i] > 0) {
             setBit(temp_selected_views, i);
             weight_norm += view_weights[i];
@@ -1065,8 +1057,8 @@ __device__ void CheckerboardPropagation(
     }
 
     float final_costs[8] = {0.0f};
-    for (int i = 0; i < 8; ++i) {
-        for (int j = 0; j < params.num_images - 1; ++j) {
+    for (int32_t i = 0; i < 8; ++i) {
+        for (int32_t j = 0; j < params.num_images - 1; ++j) {
             if (view_weights[j] > 0) {
                 if (params.geom_consistency) {
                     if (flag[i]) {
@@ -1089,13 +1081,13 @@ __device__ void CheckerboardPropagation(
         final_costs[i] /= weight_norm;
     }
 
-    const int min_cost_idx = FindMinCostIndex(final_costs, 8);
+    const int32_t min_cost_idx = FindMinCostIndex(final_costs, 8);
 
     float cost_vector_now[32] = {2.0f};
     ComputeMultiViewCostVector(
         images, cameras, p, plane_hypotheses[center], cost_vector_now, params);
     float cost_now = 0.0f;
-    for (int i = 0; i < params.num_images - 1; ++i) {
+    for (int32_t i = 0; i < params.num_images - 1; ++i) {
         if (params.geom_consistency) {
             cost_now +=
                 view_weights[i] *
@@ -1123,7 +1115,7 @@ __device__ void CheckerboardPropagation(
         float beta        = 0.18f;
 
         if (plane_masks[center] > 0) {
-            for (int i = 0; i < 8; i++) {
+            for (int32_t i = 0; i < 8; i++) {
                 if (flag[i]) {
                     float depth_now = ComputeDepthfromPlaneHypothesis(
                         cameras[0], plane_hypotheses[positions[i]], p);
@@ -1138,7 +1130,7 @@ __device__ void CheckerboardPropagation(
                         exp(-final_costs[i] * final_costs[i] / beta) * prior;
                 }
             }
-            const int max_cost_idx = FindMaxCostIndex(restricted_final_costs, 8);
+            const int32_t max_cost_idx = FindMaxCostIndex(restricted_final_costs, 8);
 
             float restricted_cost_now = 0.0f;
             float depth_now =
@@ -1213,11 +1205,11 @@ __global__ void BlackPixelUpdate(
     float4 *plane_hypotheses,
     float *costs,
     curandState *rand_states,
-    unsigned int *selected_views,
+    uint32_t *selected_views,
     float4 *prior_planes,
-    unsigned int *plane_masks,
+    uint32_t *plane_masks,
     const PatchMatchParams params,
-    const int iter) {
+    const int32_t iter) {
     int2 p =
         make_int2(blockIdx.x * blockDim.x + threadIdx.x, blockIdx.y * blockDim.y + threadIdx.y);
     if (threadIdx.x % 2 == 0) {
@@ -1248,11 +1240,11 @@ __global__ void RedPixelUpdate(
     float4 *plane_hypotheses,
     float *costs,
     curandState *rand_states,
-    unsigned int *selected_views,
+    uint32_t *selected_views,
     float4 *prior_planes,
-    unsigned int *plane_masks,
+    uint32_t *plane_masks,
     const PatchMatchParams params,
-    const int iter) {
+    const int32_t iter) {
     int2 p =
         make_int2(blockIdx.x * blockDim.x + threadIdx.x, blockIdx.y * blockDim.y + threadIdx.y);
     if (threadIdx.x % 2 == 0) {
@@ -1280,14 +1272,14 @@ __global__ void GetDepthandNormal(
     Camera *cameras, float4 *plane_hypotheses, const PatchMatchParams params) {
     const int2 p =
         make_int2(blockIdx.x * blockDim.x + threadIdx.x, blockIdx.y * blockDim.y + threadIdx.y);
-    const int width  = cameras[0].width;
-    const int height = cameras[0].height;
+    const int32_t width  = cameras[0].width;
+    const int32_t height = cameras[0].height;
 
     if (p.x >= width || p.y >= height) {
         return;
     }
 
-    const int center = p.y * width + p.x;
+    const int32_t center = p.y * width + p.x;
     plane_hypotheses[center].w =
         ComputeDepthfromPlaneHypothesis(cameras[0], plane_hypotheses[center], p);
     plane_hypotheses[center] = TransformNormal(cameras[0], plane_hypotheses[center]);
@@ -1295,34 +1287,34 @@ __global__ void GetDepthandNormal(
 
 __device__ void CheckerboardFilter(
     const Camera *cameras, float4 *plane_hypotheses, float *costs, const int2 p) {
-    int width  = cameras[0].width;
-    int height = cameras[0].height;
+    int32_t width  = cameras[0].width;
+    int32_t height = cameras[0].height;
     if (p.x >= width || p.y >= height) {
         return;
     }
 
-    const int center = p.y * width + p.x;
+    const int32_t center = p.y * width + p.x;
 
     float filter[21];
-    int index = 0;
+    int32_t index = 0;
 
     filter[index++] = plane_hypotheses[center].w;
 
     // Left
-    const int left     = center - 1;
-    const int leftleft = center - 3;
+    const int32_t left     = center - 1;
+    const int32_t leftleft = center - 3;
 
     // Up
-    const int up   = center - width;
-    const int upup = center - 3 * width;
+    const int32_t up   = center - width;
+    const int32_t upup = center - 3 * width;
 
     // Down
-    const int down     = center + width;
-    const int downdown = center + 3 * width;
+    const int32_t down     = center + width;
+    const int32_t downdown = center + 3 * width;
 
     // Right
-    const int right      = center + 1;
-    const int rightright = center + 3;
+    const int32_t right      = center + 1;
+    const int32_t rightright = center + 3;
 
     if (costs[center] < 0.001f) {
         return;
@@ -1390,7 +1382,7 @@ __device__ void CheckerboardFilter(
     }
 
     sort_small(filter, index);
-    int median_index = index / 2;
+    int32_t median_index = index / 2;
     if (index % 2 == 0) {
         plane_hypotheses[center].w = (filter[median_index - 1] + filter[median_index]) / 2;
     } else {
@@ -1423,12 +1415,12 @@ __global__ void RedPixelFilter(const Camera *cameras, float4 *plane_hypotheses, 
 }
 
 void PMMVS::RunPatchMatch() {
-    const int width  = cameras[0].width;
-    const int height = cameras[0].height;
+    const int32_t width  = cameras[0].width;
+    const int32_t height = cameras[0].height;
     // std::cout << width << " " << height << std::endl;
 
-    int BLOCK_W = 32;
-    int BLOCK_H = (BLOCK_W / 2);
+    int32_t BLOCK_W = 32;
+    int32_t BLOCK_H = (BLOCK_W / 2);
 
     dim3 grid_size_randinit;
     grid_size_randinit.x = (width + 16 - 1) / 16;
@@ -1448,7 +1440,7 @@ void PMMVS::RunPatchMatch() {
     block_size_checkerboard.y = BLOCK_H;
     block_size_checkerboard.z = 1;
 
-    int max_iterations = params.max_iterations;
+    int32_t max_iterations = params.max_iterations;
     // std::cout << "max_iterations: " << max_iterations << std::endl;
 
     RandomInitialization<<<grid_size_randinit, block_size_randinit>>>(
@@ -1463,7 +1455,7 @@ void PMMVS::RunPatchMatch() {
         params);
     CUDA_SAFE_CALL(cudaDeviceSynchronize());
 
-    for (int i = 0; i < max_iterations; ++i) {
+    for (int32_t i = 0; i < max_iterations; ++i) {
         BlackPixelUpdate<<<grid_size_checkerboard, block_size_checkerboard>>>(
             texture_images_cuda,
             texture_depths_cuda,

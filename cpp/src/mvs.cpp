@@ -2,13 +2,11 @@
 
 #include <cstdarg>
 
-namespace mvs
-{
-
+namespace mvs {
 
 void StringAppendV(std::string *dst, const char *format, va_list ap) {
     // First try with a small fixed size buffer.
-    static const int kFixedBufferSize = 1024;
+    static const int32_t kFixedBufferSize = 1024;
     char fixed_buffer[kFixedBufferSize];
 
     // It is possible for methods that use a va_list to invalidate
@@ -16,7 +14,7 @@ void StringAppendV(std::string *dst, const char *format, va_list ap) {
     // of the structure before using it and use that copy instead.
     va_list backup_ap;
     va_copy(backup_ap, ap);
-    int result = vsnprintf(fixed_buffer, kFixedBufferSize, format, backup_ap);
+    int32_t result = vsnprintf(fixed_buffer, kFixedBufferSize, format, backup_ap);
     va_end(backup_ap);
 
     if (result < kFixedBufferSize) {
@@ -42,7 +40,7 @@ void StringAppendV(std::string *dst, const char *format, va_list ap) {
 
     // Increase the buffer size to the size requested by vsnprintf,
     // plus one for the closing \0.
-    const int variable_buffer_size = result + 1;
+    const int32_t variable_buffer_size = result + 1;
     std::unique_ptr<char> variable_buffer(new char[variable_buffer_size]);
 
     // Restore the va_list before we use it again.
@@ -64,7 +62,7 @@ std::string StringPrintf(const char *format, ...) {
     return result;
 }
 
-void CudaSafeCall(const cudaError_t error, const std::string &file, const int line) {
+void CudaSafeCall(const cudaError_t error, const std::string &file, const int32_t line) {
     if (error != cudaSuccess) {
         std::cerr << StringPrintf(
                          "%s in %s at line %i", cudaGetErrorString(error), file.c_str(), line)
@@ -73,7 +71,7 @@ void CudaSafeCall(const cudaError_t error, const std::string &file, const int li
     }
 }
 
-void CudaCheckError(const char *file, const int line) {
+void CudaCheckError(const char *file, const int32_t line) {
     cudaError error = cudaGetLastError();
     if (error != cudaSuccess) {
         std::cerr << StringPrintf(
@@ -114,7 +112,7 @@ Camera ReadCamera(const std::string &cam_path) {
     std::string line;
     file >> line;
 
-    for (int i = 0; i < 3; ++i) {
+    for (int32_t i = 0; i < 3; ++i) {
         file >> camera.R[3 * i + 0] >> camera.R[3 * i + 1] >> camera.R[3 * i + 2] >> camera.t[i];
     }
 
@@ -122,7 +120,7 @@ Camera ReadCamera(const std::string &cam_path) {
     file >> tmp[0] >> tmp[1] >> tmp[2] >> tmp[3];
     file >> line;
 
-    for (int i = 0; i < 3; ++i) {
+    for (int32_t i = 0; i < 3; ++i) {
         file >> camera.K[3 * i + 0] >> camera.K[3 * i + 1] >> camera.K[3 * i + 2];
     }
 
@@ -135,8 +133,8 @@ Camera ReadCamera(const std::string &cam_path) {
 
 void RescaleImageAndCamera(
     cv::Mat_<cv::Vec3b> &src, cv::Mat_<cv::Vec3b> &dst, cv::Mat_<float> &depth, Camera &camera) {
-    const int cols = depth.cols;
-    const int rows = depth.rows;
+    const int32_t cols = depth.cols;
+    const int32_t rows = depth.rows;
 
     if (cols == src.cols && rows == src.rows) {
         dst = src.clone();
@@ -156,7 +154,7 @@ void RescaleImageAndCamera(
     camera.height = rows;
 }
 
-float3 Get3DPointonWorld(const int x, const int y, const float depth, const Camera camera) {
+float3 Get3DPointonWorld(const int32_t x, const int32_t y, const float depth, const Camera camera) {
     float3 pointX;
     float3 tmpX;
     // Reprojection
@@ -181,7 +179,8 @@ float3 Get3DPointonWorld(const int x, const int y, const float depth, const Came
     return pointX;
 }
 
-float3 Get3DPointonRefCam(const int x, const int y, const float depth, const Camera camera) {
+float3 Get3DPointonRefCam(
+    const int32_t x, const int32_t y, const float depth, const Camera camera) {
     float3 pointX;
     // Reprojection
     pointX.x = depth * (x - camera.K[2]) / camera.K[0];
@@ -212,7 +211,7 @@ float GetAngle(const cv::Vec3f &v1, const cv::Vec3f &v2) {
     return angle;
 }
 
-int readDepthDmb(const std::string file_path, cv::Mat_<float> &depth) {
+int32_t readDepthDmb(const std::string file_path, cv::Mat_<float> &depth) {
     FILE *inimage;
     inimage = fopen(file_path.c_str(), "rb");
     if (!inimage) {
@@ -246,7 +245,7 @@ int readDepthDmb(const std::string file_path, cv::Mat_<float> &depth) {
     return 0;
 }
 
-int writeDepthDmb(const std::string file_path, const cv::Mat_<float> depth) {
+int32_t writeDepthDmb(const std::string file_path, const cv::Mat_<float> depth) {
     FILE *outimage;
     outimage = fopen(file_path.c_str(), "wb");
     if (!outimage) { std::cout << "Error opening file " << file_path << std::endl; }
@@ -270,7 +269,7 @@ int writeDepthDmb(const std::string file_path, const cv::Mat_<float> depth) {
     return 0;
 }
 
-int readNormalDmb(const std::string file_path, cv::Mat_<cv::Vec3f> &normal) {
+int32_t readNormalDmb(const std::string file_path, cv::Mat_<cv::Vec3f> &normal) {
     FILE *inimage;
     inimage = fopen(file_path.c_str(), "rb");
     if (!inimage) {
@@ -304,7 +303,7 @@ int readNormalDmb(const std::string file_path, cv::Mat_<cv::Vec3f> &normal) {
     return 0;
 }
 
-int writeNormalDmb(const std::string file_path, const cv::Mat_<cv::Vec3f> normal) {
+int32_t writeNormalDmb(const std::string file_path, const cv::Mat_<cv::Vec3f> normal) {
     FILE *outimage;
     outimage = fopen(file_path.c_str(), "wb");
     if (!outimage) { std::cout << "Error opening file " << file_path << std::endl; }
@@ -396,9 +395,7 @@ void PMMVS::release() {
     delete[] plane_hypotheses_host;
     delete[] costs_host;
 
-    for (int i = 0; i < num_images; ++i) {
-        cudaFreeArray(cuArray[i]);
-    }
+    for (int32_t i = 0; i < num_images; ++i) { cudaFreeArray(cuArray[i]); }
     cudaFree(texture_images_cuda);
     cudaFree(cameras_cuda);
     cudaFree(plane_hypotheses_cuda);
@@ -408,9 +405,7 @@ void PMMVS::release() {
     cudaFree(depths_cuda);
 
     if (params.geom_consistency) {
-        for (int i = 0; i < num_images; ++i) {
-            cudaFreeArray(cuDepthArray[i]);
-        }
+        for (int32_t i = 0; i < num_images; ++i) { cudaFreeArray(cuDepthArray[i]); }
         cudaFree(texture_depths_cuda);
     }
 
@@ -441,17 +436,15 @@ void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem 
     images.push_back(all_images[problem.ref_image_id]);
     cameras.push_back(all_cameras[problem.ref_image_id]);
 
-    const size_t num_src_images = problem.src_image_ids.size();
-    for (size_t i = 0; i < num_src_images; ++i) {
+    const int32_t num_src_images = problem.num_ngb;
+    for (int32_t i = 0; i < num_src_images; ++i) {
         images.push_back(all_images[problem.src_image_ids[i]]);
         cameras.push_back(all_cameras[problem.src_image_ids[i]]);
     }
 
-    params.depth_min = cameras[0].depth_min * 0.6f;
-    params.depth_max = cameras[0].depth_max * 1.2f;
-    // std::cout << "depthe range: " << params.depth_min << " " << params.depth_max << std::endl;
-    params.num_images = (int)images.size();
-    // std::cout << "num images: " << params.num_images << std::endl;
+    params.depth_min     = cameras[0].depth_min * 0.6f;
+    params.depth_max     = cameras[0].depth_max * 1.2f;
+    params.num_images    = (int)images.size();
     params.disparity_min = cameras[0].K[0] * params.baseline / params.depth_max;
     params.disparity_max = cameras[0].K[0] * params.baseline / params.depth_min;
 
@@ -459,155 +452,20 @@ void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem 
         depths.clear();
         depths.push_back(all_depths[problem.ref_image_id]);
 
-        size_t num_src_images = problem.src_image_ids.size();
-        for (size_t i = 0; i < num_src_images; ++i) {
+        int32_t num_src_images = problem.num_ngb;
+        for (int32_t i = 0; i < num_src_images; ++i) {
             depths.push_back(all_depths[problem.src_image_ids[i]]);
         }
     }
-
-    // std::stringstream image_path;
-    // image_path << image_folder << "/" << std::setw(4) << std::setfill('0') << problem.ref_image_id
-    //            << ".jpg";
-    // cv::Mat_<uint8_t> image_uint = cv::imread(image_path.str(), cv::IMREAD_GRAYSCALE);
-    // cv::Mat image_float;
-    // image_uint.convertTo(image_float, CV_32FC1);
-    // std::stringstream cam_path;
-    // cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0') << problem.ref_image_id
-    //          << "_cam.txt";
-    // Camera camera = ReadCamera(cam_path.str());
-    // camera.height = image_float.rows;
-    // camera.width  = image_float.cols;
-    // cameras.push_back(camera);
-
-    // size_t num_src_images = problem.src_image_ids.size();
-    // for (size_t i = 0; i < num_src_images; ++i) {
-    //     std::stringstream image_path;
-    //     image_path << image_folder << "/" << std::setw(4) << std::setfill('0')
-    //                << problem.src_image_ids[i] << ".jpg";
-    //     cv::Mat_<uint8_t> image_uint = cv::imread(image_path.str(), cv::IMREAD_GRAYSCALE);
-    //     cv::Mat image_float;
-    //     image_uint.convertTo(image_float, CV_32FC1);
-    //     images.push_back(image_float);
-    //     std::stringstream cam_path;
-    //     cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0')
-    //              << problem.src_image_ids[i] << "_cam.txt";
-    //     Camera camera = ReadCamera(cam_path.str());
-    //     camera.height = image_float.rows;
-    //     camera.width  = image_float.cols;
-    //     cameras.push_back(camera);
-    // }
-
-    // if (params.geom_consistency) {
-    //     depths.clear();
-
-    //     std::stringstream result_path;
-    //     result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-    //                 << problem.ref_image_id;
-    //     std::string result_folder = result_path.str();
-    //     std::string suffix        = "/depths.dmb";
-    //     if (params.multi_geometry) { suffix = "/depths_geom.dmb"; }
-    //     std::string depth_path = result_folder + suffix;
-    //     cv::Mat_<float> ref_depth;
-    //     readDepthDmb(depth_path, ref_depth);
-    //     depths.push_back(ref_depth);
-
-    //     size_t num_src_images = problem.src_image_ids.size();
-    //     for (size_t i = 0; i < num_src_images; ++i) {
-    //         std::stringstream result_path;
-    //         result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-    //                     << problem.src_image_ids[i];
-    //         std::string result_folder = result_path.str();
-    //         std::string depth_path    = result_folder + suffix;
-    //         cv::Mat_<float> depth;
-    //         readDepthDmb(depth_path, depth);
-    //         depths.push_back(depth);
-    //     }
-    // }
 }
-
-// void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem &problem) {
-//     images.clear();
-//     cameras.clear();
-
-//     std::string image_folder = dense_folder + std::string("/images");
-//     std::string cam_folder   = dense_folder + std::string("/cams");
-
-//     std::stringstream image_path;
-//     image_path << image_folder << "/" << std::setw(4) << std::setfill('0') << problem.ref_image_id
-//                << ".jpg";
-//     cv::Mat_<uint8_t> image_uint = cv::imread(image_path.str(), cv::IMREAD_GRAYSCALE);
-//     cv::Mat image_float;
-//     image_uint.convertTo(image_float, CV_32FC1);
-//     images.push_back(image_float);
-//     std::stringstream cam_path;
-//     cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0') << problem.ref_image_id
-//              << "_cam.txt";
-//     Camera camera = ReadCamera(cam_path.str());
-//     camera.height = image_float.rows;
-//     camera.width  = image_float.cols;
-//     cameras.push_back(camera);
-
-//     size_t num_src_images = problem.src_image_ids.size();
-//     for (size_t i = 0; i < num_src_images; ++i) {
-//         std::stringstream image_path;
-//         image_path << image_folder << "/" << std::setw(4) << std::setfill('0')
-//                    << problem.src_image_ids[i] << ".jpg";
-//         cv::Mat_<uint8_t> image_uint = cv::imread(image_path.str(), cv::IMREAD_GRAYSCALE);
-//         cv::Mat image_float;
-//         image_uint.convertTo(image_float, CV_32FC1);
-//         images.push_back(image_float);
-//         std::stringstream cam_path;
-//         cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0')
-//                  << problem.src_image_ids[i] << "_cam.txt";
-//         Camera camera = ReadCamera(cam_path.str());
-//         camera.height = image_float.rows;
-//         camera.width  = image_float.cols;
-//         cameras.push_back(camera);
-//     }
-
-//     params.depth_min = cameras[0].depth_min * 0.6f;
-//     params.depth_max = cameras[0].depth_max * 1.2f;
-//     // std::cout << "depthe range: " << params.depth_min << " " << params.depth_max << std::endl;
-//     params.num_images = (int)images.size();
-//     // std::cout << "num images: " << params.num_images << std::endl;
-//     params.disparity_min = cameras[0].K[0] * params.baseline / params.depth_max;
-//     params.disparity_max = cameras[0].K[0] * params.baseline / params.depth_min;
-
-//     if (params.geom_consistency) {
-//         depths.clear();
-
-//         std::stringstream result_path;
-//         result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-//                     << problem.ref_image_id;
-//         std::string result_folder = result_path.str();
-//         std::string suffix        = "/depths.dmb";
-//         if (params.multi_geometry) { suffix = "/depths_geom.dmb"; }
-//         std::string depth_path = result_folder + suffix;
-//         cv::Mat_<float> ref_depth;
-//         readDepthDmb(depth_path, ref_depth);
-//         depths.push_back(ref_depth);
-
-//         size_t num_src_images = problem.src_image_ids.size();
-//         for (size_t i = 0; i < num_src_images; ++i) {
-//             std::stringstream result_path;
-//             result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-//                         << problem.src_image_ids[i];
-//             std::string result_folder = result_path.str();
-//             std::string depth_path    = result_folder + suffix;
-//             cv::Mat_<float> depth;
-//             readDepthDmb(depth_path, depth);
-//             depths.push_back(depth);
-//         }
-//     }
-// }
 
 void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Problem &problem) {
     num_images = (int)images.size();
 
     size_t image_size = 0;
-    for (int i = 0; i < num_images; ++i) {
-        int rows = images[i].rows;
-        int cols = images[i].cols;
+    for (int32_t i = 0; i < num_images; ++i) {
+        int32_t rows = images[i].rows;
+        int32_t cols = images[i].cols;
 
         cudaChannelFormatDesc channelDesc =
             cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
@@ -639,11 +497,7 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
         image_size += sizeof(texture_images_host[i]);
     }
     cudaMalloc((void **)&texture_images_cuda, image_size);
-    cudaMemcpy(
-        texture_images_cuda,
-        texture_images_host,
-        image_size,
-        cudaMemcpyHostToDevice);
+    cudaMemcpy(texture_images_cuda, texture_images_host, image_size, cudaMemcpyHostToDevice);
 
     cudaMalloc((void **)&cameras_cuda, sizeof(Camera) * (num_images));
     cudaMemcpy(cameras_cuda, &cameras[0], sizeof(Camera) * (num_images), cudaMemcpyHostToDevice);
@@ -658,8 +512,7 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
     cudaMalloc(
         (void **)&rand_states_cuda, sizeof(curandState) * (cameras[0].height * cameras[0].width));
     cudaMalloc(
-        (void **)&selected_views_cuda,
-        sizeof(unsigned int) * (cameras[0].height * cameras[0].width));
+        (void **)&selected_views_cuda, sizeof(uint32_t) * (cameras[0].height * cameras[0].width));
 
     cudaMalloc(
         (void **)&depths_cuda,
@@ -667,9 +520,9 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
 
     if (params.geom_consistency) {
         size_t depth_size = 0;
-        for (int i = 0; i < num_images; ++i) {
-            int rows = depths[i].rows;
-            int cols = depths[i].cols;
+        for (int32_t i = 0; i < num_images; ++i) {
+            int32_t rows = depths[i].rows;
+            int32_t cols = depths[i].cols;
 
             cudaChannelFormatDesc channelDesc =
                 cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
@@ -701,11 +554,7 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
             depth_size += sizeof(texture_depths_host[i]);
         }
         cudaMalloc((void **)&texture_depths_cuda, depth_size);
-        cudaMemcpy(
-            texture_depths_cuda,
-            texture_depths_host,
-            depth_size,
-            cudaMemcpyHostToDevice);
+        cudaMemcpy(texture_depths_cuda, texture_depths_host, depth_size, cudaMemcpyHostToDevice);
 
         std::stringstream result_path;
         result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
@@ -723,11 +572,11 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
         depths.push_back(ref_depth);
         readNormalDmb(normal_path, ref_normal);
         readDepthDmb(cost_path, ref_cost);
-        int width  = ref_depth.cols;
-        int height = ref_depth.rows;
-        for (int col = 0; col < width; ++col) {
-            for (int row = 0; row < height; ++row) {
-                int center = row * width + col;
+        int32_t width  = ref_depth.cols;
+        int32_t height = ref_depth.rows;
+        for (int32_t col = 0; col < width; ++col) {
+            for (int32_t row = 0; row < height; ++row) {
+                int32_t center = row * width + col;
                 float4 plane_hypothesis;
                 plane_hypothesis.x            = ref_normal(row, col)[0];
                 plane_hypothesis.y            = ref_normal(row, col)[1];
@@ -753,14 +602,14 @@ void PMMVS::CudaPlanarPriorInitialization(
     cudaMalloc(
         (void **)&prior_planes_cuda, sizeof(float4) * (cameras[0].height * cameras[0].width));
 
-    plane_masks_host = new unsigned int[cameras[0].height * cameras[0].width];
+    plane_masks_host = new uint32_t[cameras[0].height * cameras[0].width];
     cudaMalloc(
-        (void **)&plane_masks_cuda, sizeof(unsigned int) * (cameras[0].height * cameras[0].width));
+        (void **)&plane_masks_cuda, sizeof(uint32_t) * (cameras[0].height * cameras[0].width));
 
-    for (int i = 0; i < cameras[0].width; ++i) {
-        for (int j = 0; j < cameras[0].height; ++j) {
-            int center               = j * cameras[0].width + i;
-            plane_masks_host[center] = (unsigned int)masks(j, i);
+    for (int32_t i = 0; i < cameras[0].width; ++i) {
+        for (int32_t j = 0; j < cameras[0].height; ++j) {
+            int32_t center           = j * cameras[0].width + i;
+            plane_masks_host[center] = (uint32_t)masks(j, i);
             if (masks(j, i) > 0) { prior_planes_host[center] = PlaneParams[masks(j, i) - 1]; }
         }
     }
@@ -773,34 +622,34 @@ void PMMVS::CudaPlanarPriorInitialization(
     cudaMemcpy(
         plane_masks_cuda,
         plane_masks_host,
-        sizeof(unsigned int) * (cameras[0].height * cameras[0].width),
+        sizeof(uint32_t) * (cameras[0].height * cameras[0].width),
         cudaMemcpyHostToDevice);
 }
 
-int PMMVS::GetReferenceImageWidth() { return cameras[0].width; }
+int32_t PMMVS::GetReferenceImageWidth() { return cameras[0].width; }
 
-int PMMVS::GetReferenceImageHeight() { return cameras[0].height; }
+int32_t PMMVS::GetReferenceImageHeight() { return cameras[0].height; }
 
 cv::Mat PMMVS::GetReferenceImage() { return images[0]; }
 
-float4 PMMVS::GetPlaneHypothesis(const int index) { return plane_hypotheses_host[index]; }
+float4 PMMVS::GetPlaneHypothesis(const int32_t index) { return plane_hypotheses_host[index]; }
 
-float PMMVS::GetCost(const int index) { return costs_host[index]; }
+float PMMVS::GetCost(const int32_t index) { return costs_host[index]; }
 
 void PMMVS::GetSupportPoints(vector<cv::Point> &support2DPoints) {
     support2DPoints.clear();
-    const int step_size = 5;
-    const int width     = GetReferenceImageWidth();
-    const int height    = GetReferenceImageHeight();
-    for (int col = 0; col < width; col += step_size) {
-        for (int row = 0; row < height; row += step_size) {
+    const int32_t step_size = 5;
+    const int32_t width     = GetReferenceImageWidth();
+    const int32_t height    = GetReferenceImageHeight();
+    for (int32_t col = 0; col < width; col += step_size) {
+        for (int32_t row = 0; row < height; row += step_size) {
             float min_cost = 2.0f;
             cv::Point temp_point;
-            int c_bound = std::min(width, col + step_size);
-            int r_bound = std::min(height, row + step_size);
-            for (int c = col; c < c_bound; ++c) {
-                for (int r = row; r < r_bound; ++r) {
-                    int center = r * width + c;
+            int32_t c_bound = std::min(width, col + step_size);
+            int32_t r_bound = std::min(height, row + step_size);
+            for (int32_t c = col; c < c_bound; ++c) {
+                for (int32_t r = row; r < r_bound; ++r) {
+                    int32_t center = r * width + c;
                     if (GetCost(center) < 2.0f && min_cost > GetCost(center)) {
                         temp_point = cv::Point(c, r);
                         min_cost   = GetCost(center);
@@ -870,11 +719,12 @@ float4 PMMVS::GetPriorPlaneParams(const Triangle triangle, const cv::Mat_<float>
     return n4;
 }
 
-float PMMVS::GetDepthFromPlaneParam(const float4 plane_hypothesis, const int x, const int y) {
+float PMMVS::GetDepthFromPlaneParam(
+    const float4 plane_hypothesis, const int32_t x, const int32_t y) {
     return -plane_hypothesis.w * cameras[0].K[0] /
            ((x - cameras[0].K[2]) * plane_hypothesis.x +
             (cameras[0].K[0] / cameras[0].K[4]) * (y - cameras[0].K[5]) * plane_hypothesis.y +
             cameras[0].K[0] * plane_hypothesis.z);
 }
-    
-} // namespace mvs
+
+}  // namespace mvs
