@@ -60,6 +60,8 @@ if __name__ == "__main__":
         print(f"Loaded all depths!")
         pmmvs.load_normals(result_folder, problems)
         print(f"Loaded all normals!")
+        pmmvs.load_costs(result_folder, problems)
+        print(f"Loaded all costs!")
         # set geometry consistency parameters
         pmmvs.params.geom_consistency = True
         pmmvs.params.max_iterations = 2
@@ -67,10 +69,6 @@ if __name__ == "__main__":
         for i in trange(num_images, desc="geometric consistent"):
             _C.process_problem(result_folder, problems[i], True, False, multi_geometry, pmmvs)
 
-    pmmvs.load_depths(result_folder, problems)
-    print(f"Loaded all depths for fusion!")
-    pmmvs.load_normals(result_folder, problems)
-    print(f"Loaded all normals for fusion!")
     depths, normals = pmmvs.run_fusion(result_folder, problems, True, args.geom_cons)
 
     os.makedirs(os.path.join(result_folder, "depth_normal"), exist_ok=True)

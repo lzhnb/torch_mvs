@@ -131,29 +131,6 @@ Camera ReadCamera(const std::string &cam_path) {
     return camera;
 }
 
-void RescaleImageAndCamera(
-    cv::Mat_<cv::Vec3b> &src, cv::Mat_<cv::Vec3b> &dst, cv::Mat_<float> &depth, Camera &camera) {
-    const int32_t cols = depth.cols;
-    const int32_t rows = depth.rows;
-
-    if (cols == src.cols && rows == src.rows) {
-        dst = src.clone();
-        return;
-    }
-
-    const float scale_x = cols / static_cast<float>(src.cols);
-    const float scale_y = rows / static_cast<float>(src.rows);
-
-    cv::resize(src, dst, cv::Size(cols, rows), 0, 0, cv::INTER_LINEAR);
-
-    camera.K[0] *= scale_x;
-    camera.K[2] *= scale_x;
-    camera.K[4] *= scale_y;
-    camera.K[5] *= scale_y;
-    camera.width  = cols;
-    camera.height = rows;
-}
-
 float3 Get3DPointonWorld(const int32_t x, const int32_t y, const float depth, const Camera camera) {
     float3 pointX;
     float3 tmpX;
@@ -248,7 +225,9 @@ int32_t readDepthDmb(const std::string file_path, cv::Mat_<float> &depth) {
 int32_t writeDepthDmb(const std::string file_path, const cv::Mat_<float> depth) {
     FILE *outimage;
     outimage = fopen(file_path.c_str(), "wb");
-    if (!outimage) { std::cout << "Error opening file " << file_path << std::endl; }
+    if (!outimage) {
+        std::cout << "Error opening file " << file_path << std::endl;
+    }
 
     int32_t type = 1;
     int32_t h    = depth.rows;
@@ -306,7 +285,9 @@ int32_t readNormalDmb(const std::string file_path, cv::Mat_<cv::Vec3f> &normal) 
 int32_t writeNormalDmb(const std::string file_path, const cv::Mat_<cv::Vec3f> normal) {
     FILE *outimage;
     outimage = fopen(file_path.c_str(), "wb");
-    if (!outimage) { std::cout << "Error opening file " << file_path << std::endl; }
+    if (!outimage) {
+        std::cout << "Error opening file " << file_path << std::endl;
+    }
 
     int32_t type = 1;
     int32_t h    = normal.rows;
@@ -395,7 +376,9 @@ void PMMVS::release() {
     delete[] plane_hypotheses_host;
     delete[] costs_host;
 
-    for (int32_t i = 0; i < num_images; ++i) { cudaFreeArray(cuArray[i]); }
+    for (int32_t i = 0; i < num_images; ++i) {
+        cudaFreeArray(cuArray[i]);
+    }
     cudaFree(texture_images_cuda);
     cudaFree(cameras_cuda);
     cudaFree(plane_hypotheses_cuda);
@@ -405,7 +388,9 @@ void PMMVS::release() {
     cudaFree(depths_cuda);
 
     if (params.geom_consistency) {
-        for (int32_t i = 0; i < num_images; ++i) { cudaFreeArray(cuDepthArray[i]); }
+        for (int32_t i = 0; i < num_images; ++i) {
+            cudaFreeArray(cuDepthArray[i]);
+        }
         cudaFree(texture_depths_cuda);
     }
 
@@ -553,15 +538,14 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
                     << problem.ref_image_id;
         std::string result_folder = result_path.str();
         std::string suffix        = "/depths.dmb";
-        if (params.multi_geometry) { suffix = "/depths_geom.dmb"; }
-        std::string depth_path  = result_folder + suffix;
-        std::string normal_path = result_folder + "/normals.dmb";
-        std::string cost_path   = result_folder + "/costs.dmb";
-        cv::Mat_<float> ref_depth = all_depths[problem.ref_image_id];
+        if (params.multi_geometry) {
+            suffix = "/depths_geom.dmb";
+        }
+        std::string cost_path          = result_folder + "/costs.dmb";
+        cv::Mat_<float> ref_depth      = all_depths[problem.ref_image_id];
         cv::Mat_<cv::Vec3f> ref_normal = all_normals[problem.ref_image_id];
-        cv::Mat_<float> ref_cost;
+        cv::Mat_<float> ref_cost       = all_costs[problem.ref_image_id];
         depths.push_back(ref_depth);
-        readDepthDmb(cost_path, ref_cost);
         int32_t width  = ref_depth.cols;
         int32_t height = ref_depth.rows;
         for (int32_t col = 0; col < width; ++col) {
@@ -600,7 +584,9 @@ void PMMVS::CudaPlanarPriorInitialization(
         for (int32_t j = 0; j < cameras[0].height; ++j) {
             int32_t center           = j * cameras[0].width + i;
             plane_masks_host[center] = (uint32_t)masks(j, i);
-            if (masks(j, i) > 0) { prior_planes_host[center] = PlaneParams[masks(j, i) - 1]; }
+            if (masks(j, i) > 0) {
+                prior_planes_host[center] = PlaneParams[masks(j, i) - 1];
+            }
         }
     }
 
@@ -640,14 +626,18 @@ void PMMVS::GetSupportPoints(vector<cv::Point> &support2DPoints) {
                     }
                 }
             }
-            if (min_cost < 0.1f) { support2DPoints.push_back(temp_point); }
+            if (min_cost < 0.1f) {
+                support2DPoints.push_back(temp_point);
+            }
         }
     }
 }
 
 vector<Triangle> PMMVS::DelaunayTriangulation(
     const cv::Rect boundRC, const vector<cv::Point> &points) {
-    if (points.empty()) { return vector<Triangle>(); }
+    if (points.empty()) {
+        return vector<Triangle>();
+    }
 
     vector<Triangle> results;
 
@@ -694,7 +684,9 @@ float4 PMMVS::GetPriorPlaneParams(const Triangle triangle, const cv::Mat_<float>
     float4 n4 =
         make_float4(B.at<float>(0, 0), B.at<float>(1, 0), B.at<float>(2, 0), B.at<float>(3, 0));
     float norm2 = sqrt(pow(n4.x, 2) + pow(n4.y, 2) + pow(n4.z, 2));
-    if (n4.w < 0) { norm2 *= -1; }
+    if (n4.w < 0) {
+        norm2 *= -1;
+    }
     n4.x /= norm2;
     n4.y /= norm2;
     n4.z /= norm2;

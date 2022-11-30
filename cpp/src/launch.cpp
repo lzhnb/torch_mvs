@@ -22,7 +22,9 @@ vector<Problem> generate_sample_list(const std::string cluster_list_path) {
             int32_t id;
             float score;
             file >> id >> score;
-            if (score <= 0.0f) { continue; }
+            if (score <= 0.0f) {
+                continue;
+            }
             problem.src_image_ids[j] = id;
             ++problem.num_ngb;
         }
@@ -78,16 +80,32 @@ void PMMVS::load_depths(const std::string &dense_folder, const vector<Problem> p
 void PMMVS::load_normals(const std::string &dense_folder, const vector<Problem> problems) {
     all_normals.clear();
 
-    size_t num_problems      = problems.size();
+    size_t num_problems = problems.size();
     for (size_t i = 0; i < num_problems; ++i) {
         std::stringstream result_path;
         result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
                     << problems[i].ref_image_id;
         std::string result_folder = result_path.str();
-        std::string normal_path    = result_folder + "/normals.dmb";
+        std::string normal_path   = result_folder + "/normals.dmb";
         cv::Mat_<cv::Vec3f> normal;
         readNormalDmb(normal_path, normal);
         all_normals.push_back(normal);
+    }
+}
+
+void PMMVS::load_costs(const std::string &dense_folder, const vector<Problem> problems) {
+    all_costs.clear();
+
+    size_t num_problems = problems.size();
+    for (size_t i = 0; i < num_problems; ++i) {
+        std::stringstream result_path;
+        result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
+                    << problems[i].ref_image_id;
+        std::string result_folder = result_path.str();
+        std::string cost_path     = result_folder + "/costs.dmb";
+        cv::Mat_<float> cost;
+        readDepthDmb(cost_path, cost);
+        all_costs.push_back(cost);
     }
 }
 
@@ -140,7 +158,7 @@ void process_problem(
 
         mvs.GetSupportPoints(support2DPoints);
         const auto triangles = mvs.DelaunayTriangulation(imageRC, support2DPoints);
-        cv::Mat ref_image     = mvs.images[0].clone();
+        cv::Mat ref_image    = mvs.images[0].clone();
         vector<cv::Mat> mbgr(3);
         mbgr[0] = ref_image.clone();
         mbgr[1] = ref_image.clone();
@@ -229,7 +247,9 @@ void process_problem(
     }
 
     std::string suffix = "/depths.dmb";
-    if (geom_consistency) { suffix = "/depths_geom.dmb"; }
+    if (geom_consistency) {
+        suffix = "/depths_geom.dmb";
+    }
     std::string depth_path  = result_folder + suffix;
     std::string normal_path = result_folder + "/normals.dmb";
     std::string cost_path   = result_folder + "/costs.dmb";

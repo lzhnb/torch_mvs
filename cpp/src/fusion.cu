@@ -163,26 +163,19 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> PMMVS::run_fusion(
     const vector<Problem>& problems,
     const bool geom_consistency,
     const int32_t geom_consistent) {
-    size_t num_images        = problems.size();
-    std::string image_folder = dense_folder + std::string("/images");
-    std::string cam_folder   = dense_folder + std::string("/cams");
+    size_t num_images      = problems.size();
+    std::string cam_folder = dense_folder + std::string("/cams");
 
-    vector<cv::Mat> images;
     vector<Camera> cameras;
     vector<cv::Mat_<float>> depths;
     vector<cv::Mat_<cv::Vec3f>> normals;
     vector<cv::Mat> masks;
-    images.clear();
     cameras.clear();
     depths.clear();
     normals.clear();
     masks.clear();
 
     for (size_t i = 0; i < num_images; ++i) {
-        std::stringstream image_path;
-        image_path << image_folder << "/" << std::setw(4) << std::setfill('0')
-                   << problems[i].ref_image_id << ".jpg";
-        cv::Mat_<cv::Vec3b> image = cv::imread(image_path.str(), cv::IMREAD_COLOR);
         std::stringstream cam_path;
         cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0')
                  << problems[i].ref_image_id << "_cam.txt";
@@ -206,8 +199,6 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> PMMVS::run_fusion(
         camera.width  = depth.cols;
 
         cv::Mat_<cv::Vec3b> scaled_image;
-        RescaleImageAndCamera(image, scaled_image, depth, camera);
-        images.push_back(scaled_image);
         cameras.push_back(camera);
         depths.push_back(depth);
         normals.push_back(normal);
@@ -245,11 +236,7 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> PMMVS::run_fusion(
                 float3 PointX               = Get3DPointonWorld(c, r, ref_depth, cameras[i]);
                 float3 consistent_point     = PointX;
                 cv::Vec3f consistent_normal = ref_normal;
-                float consistent_color[3]   = {
-                      (float)images[i].at<cv::Vec3b>(r, c)[0],
-                      (float)images[i].at<cv::Vec3b>(r, c)[1],
-                      (float)images[i].at<cv::Vec3b>(r, c)[2]};
-                int32_t num_consistent = 0;
+                int32_t num_consistent      = 0;
 
                 for (int32_t j = 0; j < num_ngb; ++j) {
                     int32_t src_id         = problems[i].src_image_ids[j];
@@ -280,9 +267,6 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> PMMVS::run_fusion(
                             consistent_point.y += tmp_X.y;
                             consistent_point.z += tmp_X.z;
                             consistent_normal = consistent_normal + src_normal;
-                            consistent_color[0] += images[src_id].at<cv::Vec3b>(src_r, src_c)[0];
-                            consistent_color[1] += images[src_id].at<cv::Vec3b>(src_r, src_c)[1];
-                            consistent_color[2] += images[src_id].at<cv::Vec3b>(src_r, src_c)[2];
 
                             used_list[j].x = src_c;
                             used_list[j].y = src_r;
@@ -296,9 +280,6 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> PMMVS::run_fusion(
                     consistent_point.y /= (num_consistent + 1.0f);
                     consistent_point.z /= (num_consistent + 1.0f);
                     consistent_normal /= (num_consistent + 1.0f);
-                    consistent_color[0] /= (num_consistent + 1.0f);
-                    consistent_color[1] /= (num_consistent + 1.0f);
-                    consistent_color[2] /= (num_consistent + 1.0f);
 
                     // get valid depth and normal
                     float2 proj_point;
@@ -318,8 +299,6 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> PMMVS::run_fusion(
                     point3D.coord  = consistent_point;
                     point3D.normal = make_float3(
                         consistent_normal[0], consistent_normal[1], consistent_normal[2]);
-                    point3D.color =
-                        make_float3(consistent_color[0], consistent_color[1], consistent_color[2]);
                     PointCloud.push_back(point3D);
 
                     for (int32_t j = 0; j < num_ngb; ++j) {

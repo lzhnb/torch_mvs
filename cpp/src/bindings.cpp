@@ -20,6 +20,7 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
         .def("load_samples", &PMMVS::load_samples)
         .def("load_depths", &PMMVS::load_depths)
         .def("load_normals", &PMMVS::load_normals)
+        .def("load_costs", &PMMVS::load_costs)
         .def("run_fusion", &PMMVS::run_fusion)
         .def("release", &PMMVS::release)
         .def_readwrite("params", &PMMVS::params);

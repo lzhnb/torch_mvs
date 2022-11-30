@@ -13,6 +13,7 @@ public:
     void load_samples(const std::string &dense_folder, const vector<Problem> problems);
     void load_depths(const std::string &dense_folder, const vector<Problem> problems);
     void load_normals(const std::string &dense_folder, const vector<Problem> problems);
+    void load_costs(const std::string &dense_folder, const vector<Problem> problems);
 
     void InuputInitialization(const std::string &dense_folder, const Problem &problem);
     void CudaSpaceInitialization(const std::string &dense_folder, const Problem &problem);
@@ -38,6 +39,7 @@ public:
     vector<cv::Mat> all_images;
     vector<cv::Mat> all_depths;
     vector<cv::Mat> all_normals;
+    vector<cv::Mat> all_costs;
     vector<Camera> all_cameras;
 
     vector<cv::Mat> images;
