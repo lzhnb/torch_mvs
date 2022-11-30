@@ -158,7 +158,7 @@ __global__ void fuions_kernel(
     __syncthreads();
 }
 
-std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
+std::tuple<vector<cv::Mat>, vector<cv::Mat>> PMMVS::run_fusion(
     const std::string& dense_folder,
     const vector<Problem>& problems,
     const bool geom_consistency,

@@ -19,7 +19,28 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
         .def(py::init<>())
         .def("load_samples", &PMMVS::load_samples)
         .def("load_depths", &PMMVS::load_depths)
-        .def("release", &PMMVS::release);
+        .def("load_normals", &PMMVS::load_normals)
+        .def("run_fusion", &PMMVS::run_fusion)
+        .def("release", &PMMVS::release)
+        .def_readwrite("params", &PMMVS::params);
+
+    py::class_<PatchMatchParams>(m, "PatchMatchParams")
+        .def(py::init<>())
+        .def_readwrite("max_iterations", &mvs::PatchMatchParams::max_iterations)
+        .def_readwrite("patch_size", &mvs::PatchMatchParams::patch_size)
+        .def_readwrite("num_images", &mvs::PatchMatchParams::num_images)
+        .def_readwrite("radius_increment", &mvs::PatchMatchParams::radius_increment)
+        .def_readwrite("sigma_spatial", &mvs::PatchMatchParams::sigma_spatial)
+        .def_readwrite("sigma_color", &mvs::PatchMatchParams::sigma_color)
+        .def_readwrite("top_k", &mvs::PatchMatchParams::top_k)
+        .def_readwrite("baseline", &mvs::PatchMatchParams::baseline)
+        .def_readwrite("depth_min", &mvs::PatchMatchParams::depth_min)
+        .def_readwrite("depth_max", &mvs::PatchMatchParams::depth_max)
+        .def_readwrite("disparity_min", &mvs::PatchMatchParams::disparity_min)
+        .def_readwrite("disparity_max", &mvs::PatchMatchParams::disparity_max)
+        .def_readwrite("geom_consistency", &mvs::PatchMatchParams::geom_consistency)
+        .def_readwrite("multi_geometry", &mvs::PatchMatchParams::multi_geometry)
+        .def_readwrite("planar_prior", &mvs::PatchMatchParams::planar_prior);
 
     py::class_<Problem>(m, "Problem")
         .def(py::init<>())
@@ -29,7 +50,7 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
 
     m.def("generate_sample_list", &generate_sample_list);
     m.def("process_problem", &process_problem);
-    m.def("run_fusion", &run_fusion);
+    // m.def("run_fusion", &run_fusion);
 }
 
 }  // namespace mvs

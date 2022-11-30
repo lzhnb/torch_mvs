@@ -75,6 +75,22 @@ void PMMVS::load_depths(const std::string &dense_folder, const vector<Problem> p
     }
 }
 
+void PMMVS::load_normals(const std::string &dense_folder, const vector<Problem> problems) {
+    all_normals.clear();
+
+    size_t num_problems      = problems.size();
+    for (size_t i = 0; i < num_problems; ++i) {
+        std::stringstream result_path;
+        result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
+                    << problems[i].ref_image_id;
+        std::string result_folder = result_path.str();
+        std::string normal_path    = result_folder + "/normals.dmb";
+        cv::Mat_<cv::Vec3f> normal;
+        readNormalDmb(normal_path, normal);
+        all_normals.push_back(normal);
+    }
+}
+
 void process_problem(
     const std::string dense_folder,
     const Problem problem,

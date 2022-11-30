@@ -12,6 +12,7 @@ public:
 
     void load_samples(const std::string &dense_folder, const vector<Problem> problems);
     void load_depths(const std::string &dense_folder, const vector<Problem> problems);
+    void load_normals(const std::string &dense_folder, const vector<Problem> problems);
 
     void InuputInitialization(const std::string &dense_folder, const Problem &problem);
     void Colmap2MVS(const std::string &dense_folder, vector<Problem> &problems);
@@ -31,6 +32,11 @@ public:
     void CudaPlanarPriorInitialization(
         const vector<float4> &PlaneParams, const cv::Mat_<float> &masks);
     void release();
+    std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
+        const std::string &dense_folder,
+        const vector<Problem> &problems,
+        const bool geom_consistency,
+        const int32_t geom_consistent);
 
     PatchMatchParams params;
 
@@ -38,6 +44,7 @@ private:
     int32_t num_images;
     vector<cv::Mat> all_images;
     vector<cv::Mat> all_depths;
+    vector<cv::Mat> all_normals;
     vector<Camera> all_cameras;
 
     vector<cv::Mat> images;
@@ -72,10 +79,5 @@ void process_problem(
     const bool planar_prior,
     const bool multi_geometrty,
     PMMVS mvs);
-std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
-    const std::string &dense_folder,
-    const vector<Problem> &problems,
-    const bool geom_consistency,
-    const int32_t geom_consistent);
 
 }  // namespace mvs

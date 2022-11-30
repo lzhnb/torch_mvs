@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     for i in trange(num_images, desc="initialization"):
         _C.process_problem(result_folder, problems[i], False, args.planar_prior, False, pmmvs)
-    
+
     pmmvs.load_depths(result_folder, problems)
     print(f"Loaded all depths!")
 
@@ -61,8 +61,10 @@ if __name__ == "__main__":
         multi_geometry = geom_iter != 0
         for i in trange(num_images, desc="geometric consistent"):
             _C.process_problem(result_folder, problems[i], True, False, multi_geometry, pmmvs)
-    
-    depths, normals = _C.run_fusion(result_folder, problems, True, args.geom_cons)
+
+    pmmvs.load_normals(result_folder, problems)
+    print(f"Loaded all normals!")
+    depths, normals = pmmvs.run_fusion(result_folder, problems, True, args.geom_cons)
 
     os.makedirs(os.path.join(result_folder, "depth_normal"), exist_ok=True)
     for i, depth, normal in zip(range(num_images), depths, normals):
