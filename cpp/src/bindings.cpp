@@ -42,6 +42,13 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
         .def_readwrite("multi_geometry", &mvs::PatchMatchParams::multi_geometry)
         .def_readwrite("planar_prior", &mvs::PatchMatchParams::planar_prior);
 
+    py::class_<Camera>(m, "Camera")
+        .def(py::init<>())
+        .def_readwrite("height", &Camera::height)
+        .def_readwrite("width", &Camera::width)
+        .def_readwrite("depth_min", &Camera::depth_min)
+        .def_readwrite("depth_max", &Camera::depth_max);
+
     py::class_<Problem>(m, "Problem")
         .def(py::init<>())
         .def_readwrite("ref_image_id", &Problem::ref_image_id)

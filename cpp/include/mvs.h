@@ -15,14 +15,8 @@ public:
     void load_normals(const std::string &dense_folder, const vector<Problem> problems);
 
     void InuputInitialization(const std::string &dense_folder, const Problem &problem);
-    void Colmap2MVS(const std::string &dense_folder, vector<Problem> &problems);
     void CudaSpaceInitialization(const std::string &dense_folder, const Problem &problem);
     void RunPatchMatch();
-    void SetGeomConsistencyParams(bool multi_geometry);
-    void SetPlanarPriorParams();
-    int32_t GetReferenceImageWidth();
-    int32_t GetReferenceImageHeight();
-    cv::Mat GetReferenceImage();
     float4 GetPlaneHypothesis(const int32_t index);
     float GetCost(const int32_t index);
     void GetSupportPoints(vector<cv::Point> &support2DPoints);
@@ -40,7 +34,6 @@ public:
 
     PatchMatchParams params;
 
-private:
     int32_t num_images;
     vector<cv::Mat> all_images;
     vector<cv::Mat> all_depths;
@@ -50,6 +43,8 @@ private:
     vector<cv::Mat> images;
     vector<cv::Mat> depths;
     vector<Camera> cameras;
+
+private:
     cudaTextureObject_t texture_images_host[MAX_IMAGES];
     cudaTextureObject_t texture_depths_host[MAX_IMAGES];
     float4 *plane_hypotheses_host;

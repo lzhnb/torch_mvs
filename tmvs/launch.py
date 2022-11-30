@@ -54,16 +54,23 @@ if __name__ == "__main__":
     for i in trange(num_images, desc="initialization"):
         _C.process_problem(result_folder, problems[i], False, args.planar_prior, False, pmmvs)
 
-    pmmvs.load_depths(result_folder, problems)
-    print(f"Loaded all depths!")
-
     for geom_iter in range(args.geom_iterations):
         multi_geometry = geom_iter != 0
+        pmmvs.load_depths(result_folder, problems)
+        print(f"Loaded all depths!")
+        pmmvs.load_normals(result_folder, problems)
+        print(f"Loaded all normals!")
+        # set geometry consistency parameters
+        pmmvs.params.geom_consistency = True
+        pmmvs.params.max_iterations = 2
+        pmmvs.params.multi_geometry = multi_geometry
         for i in trange(num_images, desc="geometric consistent"):
             _C.process_problem(result_folder, problems[i], True, False, multi_geometry, pmmvs)
 
+    pmmvs.load_depths(result_folder, problems)
+    print(f"Loaded all depths for fusion!")
     pmmvs.load_normals(result_folder, problems)
-    print(f"Loaded all normals!")
+    print(f"Loaded all normals for fusion!")
     depths, normals = pmmvs.run_fusion(result_folder, problems, True, args.geom_cons)
 
     os.makedirs(os.path.join(result_folder, "depth_normal"), exist_ok=True)

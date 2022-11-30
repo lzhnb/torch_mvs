@@ -418,14 +418,6 @@ void PMMVS::release() {
     }
 }
 
-void PMMVS::SetGeomConsistencyParams(bool multi_geometry = false) {
-    params.geom_consistency = true;
-    params.max_iterations   = 2;
-    if (multi_geometry) { params.multi_geometry = true; }
-}
-
-void PMMVS::SetPlanarPriorParams() { params.planar_prior = true; }
-
 void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem &problem) {
     images.clear();
     cameras.clear();
@@ -565,12 +557,10 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
         std::string depth_path  = result_folder + suffix;
         std::string normal_path = result_folder + "/normals.dmb";
         std::string cost_path   = result_folder + "/costs.dmb";
-        cv::Mat_<float> ref_depth;
-        cv::Mat_<cv::Vec3f> ref_normal;
+        cv::Mat_<float> ref_depth = all_depths[problem.ref_image_id];
+        cv::Mat_<cv::Vec3f> ref_normal = all_normals[problem.ref_image_id];
         cv::Mat_<float> ref_cost;
-        readDepthDmb(depth_path, ref_depth);
         depths.push_back(ref_depth);
-        readNormalDmb(normal_path, ref_normal);
         readDepthDmb(cost_path, ref_cost);
         int32_t width  = ref_depth.cols;
         int32_t height = ref_depth.rows;
@@ -626,12 +616,6 @@ void PMMVS::CudaPlanarPriorInitialization(
         cudaMemcpyHostToDevice);
 }
 
-int32_t PMMVS::GetReferenceImageWidth() { return cameras[0].width; }
-
-int32_t PMMVS::GetReferenceImageHeight() { return cameras[0].height; }
-
-cv::Mat PMMVS::GetReferenceImage() { return images[0]; }
-
 float4 PMMVS::GetPlaneHypothesis(const int32_t index) { return plane_hypotheses_host[index]; }
 
 float PMMVS::GetCost(const int32_t index) { return costs_host[index]; }
@@ -639,8 +623,8 @@ float PMMVS::GetCost(const int32_t index) { return costs_host[index]; }
 void PMMVS::GetSupportPoints(vector<cv::Point> &support2DPoints) {
     support2DPoints.clear();
     const int32_t step_size = 5;
-    const int32_t width     = GetReferenceImageWidth();
-    const int32_t height    = GetReferenceImageHeight();
+    const int32_t width     = cameras[0].width;
+    const int32_t height    = cameras[0].height;
     for (int32_t col = 0; col < width; col += step_size) {
         for (int32_t row = 0; row < height; row += step_size) {
             float min_cost = 2.0f;

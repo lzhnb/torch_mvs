@@ -108,14 +108,13 @@ void process_problem(
     mkdir(result_folder.c_str(), 0777);
 
     // PMMVS mvs;
-    if (geom_consistency) { mvs.SetGeomConsistencyParams(multi_geometrty); }
     mvs.InuputInitialization(dense_folder, problem);
 
     mvs.CudaSpaceInitialization(dense_folder, problem);
     mvs.RunPatchMatch();
 
-    const int32_t width  = mvs.GetReferenceImageWidth();
-    const int32_t height = mvs.GetReferenceImageHeight();
+    const int32_t width  = mvs.cameras[0].width;
+    const int32_t height = mvs.cameras[0].height;
 
     cv::Mat_<float> depths      = cv::Mat::zeros(height, width, CV_32FC1);
     cv::Mat_<cv::Vec3f> normals = cv::Mat::zeros(height, width, CV_32FC3);
@@ -134,18 +133,18 @@ void process_problem(
 
     if (planar_prior) {
         // std::cout << "Run Planar Prior Assisted PatchMatch MVS ..." << std::endl;
-        mvs.SetPlanarPriorParams();
+        mvs.params.planar_prior = true;
 
         const cv::Rect imageRC(0, 0, width, height);
         vector<cv::Point> support2DPoints;
 
         mvs.GetSupportPoints(support2DPoints);
         const auto triangles = mvs.DelaunayTriangulation(imageRC, support2DPoints);
-        cv::Mat refImage     = mvs.GetReferenceImage().clone();
+        cv::Mat ref_image     = mvs.images[0].clone();
         vector<cv::Mat> mbgr(3);
-        mbgr[0] = refImage.clone();
-        mbgr[1] = refImage.clone();
-        mbgr[2] = refImage.clone();
+        mbgr[0] = ref_image.clone();
+        mbgr[1] = ref_image.clone();
+        mbgr[2] = ref_image.clone();
         cv::Mat srcImage;
         cv::merge(mbgr, srcImage);
         for (const auto triangle : triangles) {
