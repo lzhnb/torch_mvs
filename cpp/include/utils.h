@@ -14,7 +14,6 @@ float3 Get3DPointonWorld(const int32_t x, const int32_t y, const float depth, co
 float3 Get3DPointonRefCam(const int32_t x, const int32_t y, const float depth, const Camera camera);
 void ProjectonCamera(const float3 PointX, const Camera camera, float2 &point, float &depth);
 float GetAngle(const cv::Vec3f &v1, const cv::Vec3f &v2);
-void StoreColorPlyFileBinaryPointCloud(const std::string &plyFilePath, const vector<PointList> &pc);
 
 #define CUDA_SAFE_CALL(error) CudaSafeCall(error, __FILE__, __LINE__)
 #define CUDA_CHECK_ERROR() CudaCheckError(__FILE__, __LINE__)

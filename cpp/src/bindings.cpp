@@ -21,7 +21,6 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
         .def("load_depths", &PMMVS::load_depths)
         .def("load_normals", &PMMVS::load_normals)
         .def("load_costs", &PMMVS::load_costs)
-        .def("run_fusion", &PMMVS::run_fusion)
         .def("release", &PMMVS::release)
         .def_readwrite("params", &PMMVS::params);
 
@@ -58,7 +57,7 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
 
     m.def("generate_sample_list", &generate_sample_list);
     m.def("process_problem", &process_problem);
-    // m.def("run_fusion", &run_fusion);
+    m.def("run_fusion", &run_fusion);
 }
 
 }  // namespace mvs

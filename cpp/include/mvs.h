@@ -27,11 +27,6 @@ public:
     void CudaPlanarPriorInitialization(
         const vector<float4> &PlaneParams, const cv::Mat_<float> &masks);
     void release();
-    std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
-        const std::string &dense_folder,
-        const vector<Problem> &problems,
-        const bool geom_consistency,
-        const int32_t geom_consistent);
 
     PatchMatchParams params;
 
@@ -76,5 +71,11 @@ void process_problem(
     const bool planar_prior,
     const bool multi_geometrty,
     PMMVS mvs);
+
+std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
+    const std::string &dense_folder,
+    const vector<Problem> &problems,
+    const bool geom_consistency,
+    const int32_t geom_consistent);
 
 }  // namespace mvs

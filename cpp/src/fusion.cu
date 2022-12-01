@@ -1,5 +1,6 @@
-#include "mvs.h"
+#include <cstdio>
 
+#include "mvs.h"
 namespace mvs {
 
 __device__ float3
@@ -51,7 +52,7 @@ __device__ float get_angle(const float3 v1, const float3 v2) {
     return angle;
 }
 
-__global__ void fuions_kernel(
+__global__ void fusion_kernel(
     const float* __restrict__ depths_ptr,
     const float* __restrict__ normals_ptr,
     const Camera* __restrict__ cameras_ptr,
@@ -60,32 +61,34 @@ __global__ void fuions_kernel(
     const int32_t cols,
     const int32_t geom_const,
     // output
-    bool* __restrict__ masks_ptr,
+    uint8_t* __restrict__ masks_ptr,
     float* __restrict__ proj_depth_ptr,
     float* __restrict__ proj_normal_ptr) {
-    const int32_t ref_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (ref_idx >= rows * cols) return;
+    const int32_t ref_c   = blockIdx.x * blockDim.x + threadIdx.x;
+    const int32_t ref_r   = blockIdx.y * blockDim.y + threadIdx.y;
+    const int32_t ref_idx = ref_r * cols + ref_c;
 
-    const int32_t ref_r = ref_idx / cols, ref_c = ref_idx % cols;
+    if (ref_c >= cols || ref_r >= rows) return;
 
-    float ref_depth   = depths_ptr[ref_idx];
-    float3 ref_normal = make_float3(
-        normals_ptr[ref_idx * 3 + 0], normals_ptr[ref_idx * 3 + 1], normals_ptr[ref_idx * 3 + 2]);
+    const int32_t ref_id     = problems_ptr->ref_image_id;
+    const int32_t ref_offset = ref_id * rows * cols;
+    const float ref_depth    = depths_ptr[ref_offset + ref_idx];
+    const float3 ref_normal  = make_float3(
+        normals_ptr[(ref_offset + ref_idx) * 3 + 0],
+        normals_ptr[(ref_offset + ref_idx) * 3 + 1],
+        normals_ptr[(ref_offset + ref_idx) * 3 + 2]);
 
     if (ref_depth <= 0.0) return;
 
     int2 used_list[MAX_IMAGES];
-    for (int32_t i = 0; i < problems_ptr->num_ngb; ++i) {
-        used_list[i] = make_int2(-1, -1);
-    }
+    for (int32_t i = 0; i < problems_ptr->num_ngb; ++i) { used_list[i] = make_int2(-1, -1); }
 
-    if (masks_ptr[problems_ptr->ref_image_id * rows * cols + ref_idx]) return;
+    if (masks_ptr[ref_offset] == 1) return;
 
-    const int32_t ref_id = problems_ptr->ref_image_id;
-    float3 ref_point     = get_3D_point_on_world(ref_c, ref_r, ref_depth, cameras_ptr[ref_id]);
-    float3 const_point   = ref_point;
-    float3 const_normal  = ref_normal;
-    int32_t num_const    = 0;
+    float3 ref_point    = get_3D_point_on_world(ref_c, ref_r, ref_depth, cameras_ptr[ref_id]);
+    float3 const_point  = ref_point;
+    float3 const_normal = ref_normal;
+    int32_t num_const   = 0;
 
     for (int32_t j = 0; j < problems_ptr->num_ngb; ++j) {
         const int32_t src_id     = problems_ptr->src_image_ids[j];
@@ -152,13 +155,13 @@ __global__ void fuions_kernel(
             if (used_list[j].x == -1) continue;
             const int32_t offset = problems_ptr->src_image_ids[j] * rows * cols +
                                    used_list[j].y * cols + used_list[j].x;
-            masks_ptr[offset] = true;
+            masks_ptr[offset] = 1;
         }
     }
     __syncthreads();
 }
 
-std::tuple<vector<cv::Mat>, vector<cv::Mat>> PMMVS::run_fusion(
+std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
     const std::string& dense_folder,
     const vector<Problem>& problems,
     const bool geom_consistency,
@@ -186,9 +189,7 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> PMMVS::run_fusion(
                     << problems[i].ref_image_id;
         std::string result_folder = result_path.str();
         std::string suffix        = "/depths.dmb";
-        if (geom_consistency) {
-            suffix = "/depths_geom.dmb";
-        }
+        if (geom_consistency) { suffix = "/depths_geom.dmb"; }
         std::string depth_path  = result_folder + suffix;
         std::string normal_path = result_folder + "/normals.dmb";
         cv::Mat_<float> depth;
@@ -206,18 +207,49 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> PMMVS::run_fusion(
         masks.push_back(mask);
     }
 
-    vector<PointList> PointCloud;
-    PointCloud.clear();
+    // collect all data
+    cv::Mat all_depths, all_normals, all_masks;
+    cv::vconcat(depths, all_depths);
+    cv::vconcat(normals, all_normals);
+    cv::vconcat(masks, all_masks);
+
+    // put the cameras and problems on GPU
+    Camera* cameras_ptr = nullptr;
+    cudaMalloc((void**)&cameras_ptr, num_images * sizeof(Camera));
+    cudaMemcpy(cameras_ptr, &cameras[0], num_images * sizeof(Camera), cudaMemcpyHostToDevice);
+    Problem* problems_ptr = nullptr;
+    cudaMalloc((void**)&problems_ptr, num_images * sizeof(Problem));
+    cudaMemcpy(problems_ptr, &problems[0], num_images * sizeof(Problem), cudaMemcpyHostToDevice);
+
+    // put the depths and normals on GPU
+    float* depths_ptr;
+    float* normals_ptr;
+    uint8_t* masks_ptr;
+    const int32_t rows = depths[0].rows, cols = depths[0].cols;
+    cudaMalloc((void**)&depths_ptr, num_images * rows * cols * sizeof(float));
+    cudaMemcpy(
+        depths_ptr,
+        all_depths.ptr<float>(),
+        num_images * rows * cols * sizeof(float),
+        cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&normals_ptr, num_images * rows * cols * sizeof(float) * 3);
+    cudaMemcpy(
+        normals_ptr,
+        all_normals.ptr<cv::Vec3f>(),
+        num_images * rows * cols * sizeof(float) * 3,
+        cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&masks_ptr, num_images * rows * cols * sizeof(uint8_t));
+    cudaMemcpy(
+        masks_ptr,
+        all_masks.ptr<uint8_t>(),
+        num_images * rows * cols * sizeof(uint8_t),
+        cudaMemcpyHostToDevice);
 
     // output
     vector<cv::Mat> output_proj_depths;
     vector<cv::Mat> output_proj_normals;
 
     for (size_t i = 0; i < num_images; ++i) {
-        std::cout << "Fusing image " << std::setw(4) << std::setfill('0') << i << "..."
-                  << std::endl;
-        const int32_t cols    = depths[i].cols;
-        const int32_t rows    = depths[i].rows;
         const int32_t num_ngb = problems[i].num_ngb;
         vector<int2> used_list(num_ngb, make_int2(-1, -1));
 
@@ -225,97 +257,64 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> PMMVS::run_fusion(
         cv::Mat output_proj_depth  = cv::Mat::zeros(rows, cols, CV_32FC1);
         cv::Mat output_proj_normal = cv::Mat::zeros(rows, cols, CV_32FC3);
 
-        for (int32_t r = 0; r < rows; ++r) {
-            for (int32_t c = 0; c < cols; ++c) {
-                if (masks[i].at<uchar>(r, c) == 1) continue;
-                float ref_depth      = depths[i].at<float>(r, c);
-                cv::Vec3f ref_normal = normals[i].at<cv::Vec3f>(r, c);
+        float* proj_depth_ptr;
+        float* proj_normal_ptr;
+        const int32_t rows = depths[0].rows, cols = depths[0].cols;
+        cudaMalloc((void**)&proj_depth_ptr, rows * cols * sizeof(float));
+        cudaMemcpy(
+            proj_depth_ptr,
+            output_proj_depth.ptr<float>(),
+            rows * cols * sizeof(float),
+            cudaMemcpyHostToDevice);
+        cudaMalloc((void**)&proj_normal_ptr, rows * cols * sizeof(float) * 3);
+        cudaMemcpy(
+            proj_normal_ptr,
+            output_proj_normal.ptr<cv::Vec3f>(),
+            rows * cols * sizeof(float) * 3,
+            cudaMemcpyHostToDevice);
 
-                if (ref_depth <= 0.0) continue;
-
-                float3 PointX               = Get3DPointonWorld(c, r, ref_depth, cameras[i]);
-                float3 consistent_point     = PointX;
-                cv::Vec3f consistent_normal = ref_normal;
-                int32_t num_consistent      = 0;
-
-                for (int32_t j = 0; j < num_ngb; ++j) {
-                    int32_t src_id         = problems[i].src_image_ids[j];
-                    const int32_t src_cols = depths[src_id].cols;
-                    const int32_t src_rows = depths[src_id].rows;
-                    float2 point;
-                    float proj_depth;
-                    ProjectonCamera(PointX, cameras[src_id], point, proj_depth);
-                    int32_t src_r = int32_t(point.y + 0.5f);
-                    int32_t src_c = int32_t(point.x + 0.5f);
-                    if (src_c >= 0 && src_c < src_cols && src_r >= 0 && src_r < src_rows) {
-                        if (masks[src_id].at<uchar>(src_r, src_c) == 1) continue;
-
-                        float src_depth      = depths[src_id].at<float>(src_r, src_c);
-                        cv::Vec3f src_normal = normals[src_id].at<cv::Vec3f>(src_r, src_c);
-                        if (src_depth <= 0.0) continue;
-
-                        float3 tmp_X = Get3DPointonWorld(src_c, src_r, src_depth, cameras[src_id]);
-                        float2 tmp_pt;
-                        ProjectonCamera(tmp_X, cameras[i], tmp_pt, proj_depth);
-                        float reproj_error = sqrt(pow(c - tmp_pt.x, 2) + pow(r - tmp_pt.y, 2));
-                        float relative_depth_diff = fabs(proj_depth - ref_depth) / ref_depth;
-                        float angle               = GetAngle(ref_normal, src_normal);
-
-                        if (reproj_error < 2.0f && relative_depth_diff < 0.01f &&
-                            angle < 0.174533f) {
-                            consistent_point.x += tmp_X.x;
-                            consistent_point.y += tmp_X.y;
-                            consistent_point.z += tmp_X.z;
-                            consistent_normal = consistent_normal + src_normal;
-
-                            used_list[j].x = src_c;
-                            used_list[j].y = src_r;
-                            num_consistent++;
-                        }
-                    }
-                }
-
-                if (num_consistent >= geom_consistent) {
-                    consistent_point.x /= (num_consistent + 1.0f);
-                    consistent_point.y /= (num_consistent + 1.0f);
-                    consistent_point.z /= (num_consistent + 1.0f);
-                    consistent_normal /= (num_consistent + 1.0f);
-
-                    // get valid depth and normal
-                    float2 proj_point;
-                    float proj_depth;
-                    ProjectonCamera(consistent_point, cameras[i], proj_point, proj_depth);
-                    const int32_t proj_ref_r = int32_t(proj_point.y + 0.5f),
-                                  proj_ref_c = int32_t(proj_point.x + 0.5f);
-
-                    if (proj_ref_c >= 0 && proj_ref_c < cols && proj_ref_r >= 0 &&
-                        proj_ref_r < rows && proj_depth > 0.001f) {
-                        output_proj_depth.at<float>(proj_ref_r, proj_ref_c)      = proj_depth;
-                        output_proj_normal.at<cv::Vec3f>(proj_ref_r, proj_ref_c) = cv::Vec3f(
-                            consistent_normal[0], consistent_normal[1], consistent_normal[2]);
-                    }
-
-                    PointList point3D;
-                    point3D.coord  = consistent_point;
-                    point3D.normal = make_float3(
-                        consistent_normal[0], consistent_normal[1], consistent_normal[2]);
-                    PointCloud.push_back(point3D);
-
-                    for (int32_t j = 0; j < num_ngb; ++j) {
-                        if (used_list[j].x == -1) continue;
-                        masks[problems[i].src_image_ids[j]].at<uchar>(
-                            used_list[j].y, used_list[j].x) = 1;
-                    }
-                }
-            }
-        }
+        const int32_t kernel_size = 16;
+        dim3 grid_size;
+        grid_size.x = (cols + kernel_size - 1) / kernel_size;
+        grid_size.y = (rows + kernel_size - 1) / kernel_size;
+        grid_size.z = 1;
+        dim3 block_size;
+        block_size.x = kernel_size;
+        block_size.y = kernel_size;
+        block_size.z = 1;
+        fusion_kernel<<<grid_size, block_size>>>(
+            depths_ptr,
+            normals_ptr,
+            cameras_ptr,
+            &problems_ptr[i],
+            rows,
+            cols,
+            geom_consistent,
+            masks_ptr,
+            proj_depth_ptr,
+            proj_normal_ptr
+        );
+        cudaMemcpy(
+            output_proj_depth.ptr<float>(),
+            proj_depth_ptr,
+            rows * cols * sizeof(float),
+            cudaMemcpyDeviceToHost);
+        cudaMemcpy(
+            output_proj_normal.ptr<cv::Vec3f>(),
+            proj_normal_ptr,
+            rows * cols * sizeof(float) * 3,
+            cudaMemcpyDeviceToHost);
 
         output_proj_depths.push_back(output_proj_depth);
         output_proj_normals.push_back(output_proj_normal);
+        cudaFree(proj_depth_ptr);
+        cudaFree(proj_normal_ptr);
     }
 
-    std::string ply_path = dense_folder + "/ACMP/ACMP_model.ply";
-    StoreColorPlyFileBinaryPointCloud(ply_path, PointCloud);
+    cudaFree(cameras_ptr);
+    cudaFree(problems_ptr);
+    cudaFree(depths_ptr);
+    cudaFree(normals_ptr);
 
     return std::make_tuple(output_proj_depths, output_proj_normals);
 }
