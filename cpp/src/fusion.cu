@@ -162,15 +162,15 @@ __global__ void fusion_kernel(
     __syncthreads();
 }
 
-std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
-    const std::string& dense_folder,
+tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
+    const string& dense_folder,
     const vector<Problem>& problems,
     const vector<cv::Mat> &depth_maps,
     const vector<cv::Mat> &normal_maps,
     const bool geom_consistency,
     const int32_t geom_consistent) {
     size_t num_images      = problems.size();
-    std::string cam_folder = dense_folder + std::string("/cams");
+    string cam_folder = dense_folder + string("/cams");
 
     vector<Camera> cameras;
     vector<cv::Mat_<float>> depths;
@@ -187,18 +187,6 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
                  << problems[i].ref_image_id << "_cam.txt";
         Camera camera = ReadCamera(cam_path.str());
 
-        // std::stringstream result_path;
-        // result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-        //             << problems[i].ref_image_id;
-        // std::string result_folder = result_path.str();
-        // std::string suffix        = "/depths.dmb";
-        // if (geom_consistency) { suffix = "/depths_geom.dmb"; }
-        // std::string depth_path  = result_folder + suffix;
-        // std::string normal_path = result_folder + "/normals.dmb";
-        // cv::Mat_<float> depth;
-        // cv::Mat_<cv::Vec3f> normal;
-        // readDepthDmb(depth_path, depth);
-        // readNormalDmb(normal_path, normal);
         cv::Mat_<float> depth = depth_maps[i];
         cv::Mat_<cv::Vec3f> normal = normal_maps[i];
         camera.height = depth.rows;

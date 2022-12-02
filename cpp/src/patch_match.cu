@@ -1453,7 +1453,7 @@ void PMMVS::RunPatchMatch() {
         prior_planes_cuda,
         plane_masks_cuda,
         params);
-    CUDA_SAFE_CALL(cudaDeviceSynchronize());
+    CUDA_CHECK(cudaDeviceSynchronize());
 
     for (int32_t i = 0; i < max_iterations; ++i) {
         BlackPixelUpdate<<<grid_size_checkerboard, block_size_checkerboard>>>(
@@ -1468,7 +1468,7 @@ void PMMVS::RunPatchMatch() {
             plane_masks_cuda,
             params,
             i);
-        CUDA_SAFE_CALL(cudaDeviceSynchronize());
+        CUDA_CHECK(cudaDeviceSynchronize());
         RedPixelUpdate<<<grid_size_checkerboard, block_size_checkerboard>>>(
             texture_images_cuda,
             texture_depths_cuda,
@@ -1481,20 +1481,20 @@ void PMMVS::RunPatchMatch() {
             plane_masks_cuda,
             params,
             i);
-        CUDA_SAFE_CALL(cudaDeviceSynchronize());
+        CUDA_CHECK(cudaDeviceSynchronize());
         // printf("iteration: %d\n", i);
     }
 
     GetDepthandNormal<<<grid_size_randinit, block_size_randinit>>>(
         cameras_cuda, plane_hypotheses_cuda, params);
-    CUDA_SAFE_CALL(cudaDeviceSynchronize());
+    CUDA_CHECK(cudaDeviceSynchronize());
 
     BlackPixelFilter<<<grid_size_checkerboard, block_size_checkerboard>>>(
         cameras_cuda, plane_hypotheses_cuda, costs_cuda);
-    CUDA_SAFE_CALL(cudaDeviceSynchronize());
+    CUDA_CHECK(cudaDeviceSynchronize());
     RedPixelFilter<<<grid_size_checkerboard, block_size_checkerboard>>>(
         cameras_cuda, plane_hypotheses_cuda, costs_cuda);
-    CUDA_SAFE_CALL(cudaDeviceSynchronize());
+    CUDA_CHECK(cudaDeviceSynchronize());
 
     cudaMemcpy(
         plane_hypotheses_host,
@@ -1502,7 +1502,7 @@ void PMMVS::RunPatchMatch() {
         sizeof(float4) * width * height,
         cudaMemcpyDeviceToHost);
     cudaMemcpy(costs_host, costs_cuda, sizeof(float) * width * height, cudaMemcpyDeviceToHost);
-    CUDA_SAFE_CALL(cudaDeviceSynchronize());
+    CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 }  // namespace mvs

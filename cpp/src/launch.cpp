@@ -2,7 +2,7 @@
 
 namespace mvs {
 
-vector<Problem> generate_sample_list(const std::string cluster_list_path) {
+vector<Problem> generate_sample_list(const string cluster_list_path) {
     vector<Problem> problems;
     problems.clear();
 
@@ -34,12 +34,12 @@ vector<Problem> generate_sample_list(const std::string cluster_list_path) {
     return problems;
 }
 
-void PMMVS::load_samples(const std::string &dense_folder, const vector<Problem> problems) {
+void PMMVS::load_samples(const string &dense_folder, const vector<Problem> problems) {
     all_images.clear();
     all_cameras.clear();
 
-    std::string image_folder = dense_folder + std::string("/images");
-    std::string cam_folder   = dense_folder + std::string("/cams");
+    string image_folder = dense_folder + string("/images");
+    string cam_folder   = dense_folder + string("/cams");
 
     const int32_t num_images = problems.size();
     for (size_t i = 0; i < num_images; ++i) {
@@ -76,14 +76,13 @@ void PMMVS::load_geometry(
     }
 }
 
-std::tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
-    const std::string dense_folder,
+tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
+    const string dense_folder,
     const Problem problem,
     const bool geom_consistency,
     const bool planar_prior,
     const bool multi_geometrty,
     PMMVS mvs) {
-
     cudaSetDevice(0);
     mvs.InuputInitialization(problem);
     mvs.CudaSpaceInitialization(problem);
@@ -132,7 +131,7 @@ std::tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
                 cv::line(srcImage, triangle.pt2, triangle.pt3, cv::Scalar(0, 0, 255));
             }
         }
-        // std::string triangulation_path = result_folder + "/triangulation.png";
+        // string triangulation_path = result_folder + "/triangulation.png";
         // cv::imwrite(triangulation_path, srcImage);
 
         cv::Mat_<float> mask_tri = cv::Mat::zeros(height, width, CV_32FC1);
@@ -201,11 +200,6 @@ std::tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
                 costs(row, col) = mvs.GetCost(center);
             }
         }
-    }
-
-    std::string suffix = "/depths.dmb";
-    if (geom_consistency) {
-        suffix = "/depths_geom.dmb";
     }
 
     mvs.release();

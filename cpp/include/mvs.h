@@ -1,6 +1,6 @@
 #pragma once
 
-#include "launch.h"
+#include "primitives.h"
 #include "utils.h"
 
 namespace mvs {
@@ -10,7 +10,7 @@ public:
     PMMVS();
     ~PMMVS();
 
-    void load_samples(const std::string &dense_folder, const vector<Problem> problems);
+    void load_samples(const string &dense_folder, const vector<Problem> problems);
     void load_geometry(
         const vector<cv::Mat> &depth_maps,
         const vector<cv::Mat> &normal_maps,
@@ -64,17 +64,17 @@ private:
     uint32_t *plane_masks_cuda;
 };
 
-vector<Problem> generate_sample_list(const std::string dense_folder);
-std::tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
-    const std::string dense_folder,
+vector<Problem> generate_sample_list(const string dense_folder);
+tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
+    const string dense_folder,
     const Problem problem,
     const bool geom_consistency,
     const bool planar_prior,
     const bool multi_geometrty,
     PMMVS mvs);
 
-std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
-    const std::string &dense_folder,
+tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
+    const string &dense_folder,
     const vector<Problem> &problems,
     const vector<cv::Mat> &depth_maps,
     const vector<cv::Mat> &normal_maps,
