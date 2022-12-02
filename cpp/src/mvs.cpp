@@ -4,11 +4,7 @@
 
 namespace mvs {
 
-PMMVS::PMMVS() {}
-
-PMMVS::~PMMVS() {}
-
-Camera ReadCamera(const string &cam_path) {
+Camera read_camera(const string &cam_path) {
     Camera camera;
     std::ifstream file(cam_path);
 
@@ -34,7 +30,7 @@ Camera ReadCamera(const string &cam_path) {
     return camera;
 }
 
-float3 Get3DPointonRefCam(
+float3 get_3D_point_on_ref_cam(
     const int32_t x, const int32_t y, const float depth, const Camera camera) {
     float3 pointX;
     // Reprojection
@@ -44,6 +40,10 @@ float3 Get3DPointonRefCam(
 
     return pointX;
 }
+
+PMMVS::PMMVS() {}
+
+PMMVS::~PMMVS() {}
 
 void PMMVS::release() {
     delete[] plane_hypotheses_host;
@@ -76,7 +76,7 @@ void PMMVS::release() {
     }
 }
 
-void PMMVS::InuputInitialization(const Problem &problem) {
+void PMMVS::inuput_initialization(const Problem &problem) {
     images.clear();
     cameras.clear();
 
@@ -106,7 +106,7 @@ void PMMVS::InuputInitialization(const Problem &problem) {
     }
 }
 
-void PMMVS::CudaSpaceInitialization(const Problem &problem) {
+void PMMVS::cuda_space_initialization(const Problem &problem) {
     num_images = (int)images.size();
 
     size_t image_size = 0;
@@ -231,7 +231,7 @@ void PMMVS::CudaSpaceInitialization(const Problem &problem) {
     }
 }
 
-void PMMVS::CudaPlanarPriorInitialization(
+void PMMVS::cuda_planar_prior_initialization(
     const vector<float4> &PlaneParams, const cv::Mat_<float> &masks) {
     prior_planes_host = new float4[cameras[0].height * cameras[0].width];
     cudaMalloc(
@@ -263,11 +263,11 @@ void PMMVS::CudaPlanarPriorInitialization(
         cudaMemcpyHostToDevice);
 }
 
-float4 PMMVS::GetPlaneHypothesis(const int32_t index) { return plane_hypotheses_host[index]; }
+float4 PMMVS::get_plane_hypothesis(const int32_t index) { return plane_hypotheses_host[index]; }
 
-float PMMVS::GetCost(const int32_t index) { return costs_host[index]; }
+float PMMVS::get_cost(const int32_t index) { return costs_host[index]; }
 
-void PMMVS::GetSupportPoints(vector<cv::Point> &support2DPoints) {
+void PMMVS::get_support_points(vector<cv::Point> &support2DPoints) {
     support2DPoints.clear();
     const int32_t step_size = 5;
     const int32_t width     = cameras[0].width;
@@ -281,9 +281,9 @@ void PMMVS::GetSupportPoints(vector<cv::Point> &support2DPoints) {
             for (int32_t c = col; c < c_bound; ++c) {
                 for (int32_t r = row; r < r_bound; ++r) {
                     int32_t center = r * width + c;
-                    if (GetCost(center) < 2.0f && min_cost > GetCost(center)) {
+                    if (get_cost(center) < 2.0f && min_cost > get_cost(center)) {
                         temp_point = cv::Point(c, r);
-                        min_cost   = GetCost(center);
+                        min_cost   = get_cost(center);
                     }
                 }
             }
@@ -294,7 +294,7 @@ void PMMVS::GetSupportPoints(vector<cv::Point> &support2DPoints) {
     }
 }
 
-vector<Triangle> PMMVS::DelaunayTriangulation(
+vector<Triangle> PMMVS::delaunay_triangulation(
     const cv::Rect boundRC, const vector<cv::Point> &points) {
     if (points.empty()) {
         return vector<Triangle>();
@@ -318,15 +318,15 @@ vector<Triangle> PMMVS::DelaunayTriangulation(
     return results;
 }
 
-float4 PMMVS::GetPriorPlaneParams(const Triangle triangle, const cv::Mat_<float> depths) {
+float4 PMMVS::get_prior_plane_params(const Triangle triangle, const cv::Mat_<float> depths) {
     cv::Mat A(3, 4, CV_32FC1);
     cv::Mat B(4, 1, CV_32FC1);
 
-    float3 ptX1 = Get3DPointonRefCam(
+    float3 ptX1 = get_3D_point_on_ref_cam(
         triangle.pt1.x, triangle.pt1.y, depths(triangle.pt1.y, triangle.pt1.x), cameras[0]);
-    float3 ptX2 = Get3DPointonRefCam(
+    float3 ptX2 = get_3D_point_on_ref_cam(
         triangle.pt2.x, triangle.pt2.y, depths(triangle.pt2.y, triangle.pt2.x), cameras[0]);
-    float3 ptX3 = Get3DPointonRefCam(
+    float3 ptX3 = get_3D_point_on_ref_cam(
         triangle.pt3.x, triangle.pt3.y, depths(triangle.pt3.y, triangle.pt3.x), cameras[0]);
 
     A.at<float>(0, 0) = ptX1.x;
@@ -356,7 +356,7 @@ float4 PMMVS::GetPriorPlaneParams(const Triangle triangle, const cv::Mat_<float>
     return n4;
 }
 
-float PMMVS::GetDepthFromPlaneParam(
+float PMMVS::get_depth_from_plane_param(
     const float4 plane_hypothesis, const int32_t x, const int32_t y) {
     return -plane_hypothesis.w * cameras[0].K[0] /
            ((x - cameras[0].K[2]) * plane_hypothesis.x +

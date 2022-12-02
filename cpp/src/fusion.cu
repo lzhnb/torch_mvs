@@ -4,7 +4,7 @@
 namespace mvs {
 
 __device__ float3
-get_3D_point_on_world(const float x, const float y, const float depth, const Camera camera) {
+get_3D_point_on_world_fusion(const float x, const float y, const float depth, const Camera camera) {
     float3 pointX;
     float3 tmpX;
     // Reprojection
@@ -86,7 +86,7 @@ __global__ void fusion_kernel(
     if (masks_ptr[ref_offset + ref_idx] == 1) return;
 
     const Camera ref_cam   = cameras_ptr[ref_id];
-    const float3 ref_point = get_3D_point_on_world(ref_c, ref_r, ref_depth, ref_cam);
+    const float3 ref_point = get_3D_point_on_world_fusion(ref_c, ref_r, ref_depth, ref_cam);
     float3 const_point     = ref_point;
     float3 const_normal    = ref_normal;
     int32_t num_const      = 0;
@@ -108,7 +108,7 @@ __global__ void fusion_kernel(
                 normals_ptr[(src_offset + src_idx) * 3 + 2]);
             if (src_depth <= 0) continue;
 
-            const float3 src_point   = get_3D_point_on_world(src_c, src_r, src_depth, src_cam);
+            const float3 src_point   = get_3D_point_on_world_fusion(src_c, src_r, src_depth, src_cam);
             const float2 tmp_pt      = project_on_camera(src_point, ref_cam, proj_depth);
             const float reproj_error = sqrt(pow(ref_c - tmp_pt.x, 2) + pow(ref_r - tmp_pt.y, 2));
             const float relative_depth_diff = fabs(proj_depth - ref_depth) / ref_depth;
@@ -185,7 +185,7 @@ tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
         std::stringstream cam_path;
         cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0')
                  << problems[i].ref_image_id << "_cam.txt";
-        Camera camera = ReadCamera(cam_path.str());
+        Camera camera = read_camera(cam_path.str());
 
         cv::Mat_<float> depth = depth_maps[i];
         cv::Mat_<cv::Vec3f> normal = normal_maps[i];

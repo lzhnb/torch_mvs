@@ -6,7 +6,6 @@
 #include "primitives.h"
 #include "mvs.h"
 #include "ndarray_converter.h"
-#include "utils.h"
 
 namespace py = pybind11;
 

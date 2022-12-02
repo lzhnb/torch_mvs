@@ -53,7 +53,7 @@ void PMMVS::load_samples(const string &dense_folder, const vector<Problem> probl
         std::stringstream cam_path;
         cam_path << cam_folder << "/" << std::setw(4) << std::setfill('0')
                  << problems[i].ref_image_id << "_cam.txt";
-        Camera camera = ReadCamera(cam_path.str());
+        Camera camera = read_camera(cam_path.str());
         camera.height = image_float.rows;
         camera.width  = image_float.cols;
         all_cameras.push_back(camera);
@@ -84,9 +84,9 @@ tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
     const bool multi_geometrty,
     PMMVS mvs) {
     cudaSetDevice(0);
-    mvs.InuputInitialization(problem);
-    mvs.CudaSpaceInitialization(problem);
-    mvs.RunPatchMatch();
+    mvs.inuput_initialization(problem);
+    mvs.cuda_space_initialization(problem);
+    mvs.run_patch_match();
 
     const int32_t width  = mvs.cameras[0].width;
     const int32_t height = mvs.cameras[0].height;
@@ -99,11 +99,11 @@ tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
     for (int32_t col = 0; col < width; ++col) {
         for (int32_t row = 0; row < height; ++row) {
             int32_t center          = row * width + col;
-            float4 plane_hypothesis = mvs.GetPlaneHypothesis(center);
+            float4 plane_hypothesis = mvs.get_plane_hypothesis(center);
             depths(row, col)        = plane_hypothesis.w;
             normals(row, col) =
                 cv::Vec3f(plane_hypothesis.x, plane_hypothesis.y, plane_hypothesis.z);
-            costs(row, col) = mvs.GetCost(center);
+            costs(row, col) = mvs.get_cost(center);
         }
     }
 
@@ -114,8 +114,8 @@ tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
         const cv::Rect imageRC(0, 0, width, height);
         vector<cv::Point> support2DPoints;
 
-        mvs.GetSupportPoints(support2DPoints);
-        const auto triangles = mvs.DelaunayTriangulation(imageRC, support2DPoints);
+        mvs.get_support_points(support2DPoints);
+        const auto triangles = mvs.delaunay_triangulation(imageRC, support2DPoints);
         cv::Mat ref_image    = mvs.images[0].clone();
         vector<cv::Mat> mbgr(3);
         mbgr[0] = ref_image.clone();
@@ -167,7 +167,7 @@ tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
                 }
 
                 // estimate plane parameter
-                float4 n4 = mvs.GetPriorPlaneParams(triangle, depths);
+                float4 n4 = mvs.get_prior_plane_params(triangle, depths);
                 planeParams_tri.push_back(n4);
                 idx++;
             }
@@ -177,7 +177,7 @@ tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
         for (int32_t i = 0; i < width; ++i) {
             for (int32_t j = 0; j < height; ++j) {
                 if (mask_tri(j, i) > 0) {
-                    float d = mvs.GetDepthFromPlaneParam(planeParams_tri[mask_tri(j, i) - 1], i, j);
+                    float d = mvs.get_depth_from_plane_param(planeParams_tri[mask_tri(j, i) - 1], i, j);
                     if (d <= mvs.params.depth_max && d >= mvs.params.depth_min) {
                         priordepths(j, i) = d;
                     } else {
@@ -187,17 +187,17 @@ tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
             }
         }
 
-        mvs.CudaPlanarPriorInitialization(planeParams_tri, mask_tri);
-        mvs.RunPatchMatch();
+        mvs.cuda_planar_prior_initialization(planeParams_tri, mask_tri);
+        mvs.run_patch_match();
 
         for (int32_t col = 0; col < width; ++col) {
             for (int32_t row = 0; row < height; ++row) {
                 int32_t center          = row * width + col;
-                float4 plane_hypothesis = mvs.GetPlaneHypothesis(center);
+                float4 plane_hypothesis = mvs.get_plane_hypothesis(center);
                 depths(row, col)        = plane_hypothesis.w;
                 normals(row, col) =
                     cv::Vec3f(plane_hypothesis.x, plane_hypothesis.y, plane_hypothesis.z);
-                costs(row, col) = mvs.GetCost(center);
+                costs(row, col) = mvs.get_cost(center);
             }
         }
     }

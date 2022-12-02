@@ -1,9 +1,11 @@
 #pragma once
 
 #include "primitives.h"
-#include "utils.h"
 
 namespace mvs {
+
+Camera read_camera(const string &cam_path);
+float3 get_3D_point_on_ref_cam(const int32_t x, const int32_t y, const float depth, const Camera camera);
 
 class PMMVS {
 public:
@@ -16,16 +18,16 @@ public:
         const vector<cv::Mat> &normal_maps,
         const vector<cv::Mat> &cost_maps);
 
-    void InuputInitialization(const Problem &problem);
-    void CudaSpaceInitialization(const Problem &problem);
-    void RunPatchMatch();
-    float4 GetPlaneHypothesis(const int32_t index);
-    float GetCost(const int32_t index);
-    void GetSupportPoints(vector<cv::Point> &support2DPoints);
-    vector<Triangle> DelaunayTriangulation(const cv::Rect boundRC, const vector<cv::Point> &points);
-    float4 GetPriorPlaneParams(const Triangle triangle, const cv::Mat_<float> depths);
-    float GetDepthFromPlaneParam(const float4 plane_hypothesis, const int32_t x, const int32_t y);
-    void CudaPlanarPriorInitialization(
+    void inuput_initialization(const Problem &problem);
+    void cuda_space_initialization(const Problem &problem);
+    void run_patch_match();
+    float4 get_plane_hypothesis(const int32_t index);
+    float get_cost(const int32_t index);
+    void get_support_points(vector<cv::Point> &support2DPoints);
+    vector<Triangle> delaunay_triangulation(const cv::Rect boundRC, const vector<cv::Point> &points);
+    float4 get_prior_plane_params(const Triangle triangle, const cv::Mat_<float> depths);
+    float get_depth_from_plane_param(const float4 plane_hypothesis, const int32_t x, const int32_t y);
+    void cuda_planar_prior_initialization(
         const vector<float4> &PlaneParams, const cv::Mat_<float> &masks);
     void release();
 
