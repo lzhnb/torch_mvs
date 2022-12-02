@@ -18,9 +18,9 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
     py::class_<PMMVS>(m, "PMMVS")
         .def(py::init<>())
         .def("load_samples", &PMMVS::load_samples)
-        .def("load_depths", &PMMVS::load_depths)
-        .def("load_normals", &PMMVS::load_normals)
-        .def("load_costs", &PMMVS::load_costs)
+        // .def("load_normals", &PMMVS::load_normals)
+        // .def("load_costs", &PMMVS::load_costs)
+        .def("load_geometry", &PMMVS::load_geometry)
         .def("release", &PMMVS::release)
         .def_readwrite("params", &PMMVS::params);
 

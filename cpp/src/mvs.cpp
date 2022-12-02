@@ -142,126 +142,6 @@ float3 Get3DPointonRefCam(
     return pointX;
 }
 
-int32_t readDepthDmb(const std::string file_path, cv::Mat_<float> &depth) {
-    FILE *inimage;
-    inimage = fopen(file_path.c_str(), "rb");
-    if (!inimage) {
-        std::cout << "Error opening file " << file_path << std::endl;
-        return -1;
-    }
-
-    int32_t type, h, w, nb;
-
-    type = -1;
-
-    fread(&type, sizeof(int32_t), 1, inimage);
-    fread(&h, sizeof(int32_t), 1, inimage);
-    fread(&w, sizeof(int32_t), 1, inimage);
-    fread(&nb, sizeof(int32_t), 1, inimage);
-
-    if (type != 1) {
-        fclose(inimage);
-        return -1;
-    }
-
-    int32_t dataSize = h * w * nb;
-
-    float *data;
-    data = (float *)malloc(sizeof(float) * dataSize);
-    fread(data, sizeof(float), dataSize, inimage);
-
-    depth = cv::Mat(h, w, CV_32F, data);
-
-    fclose(inimage);
-    return 0;
-}
-
-int32_t writeDepthDmb(const std::string file_path, const cv::Mat_<float> depth) {
-    FILE *outimage;
-    outimage = fopen(file_path.c_str(), "wb");
-    if (!outimage) {
-        std::cout << "Error opening file " << file_path << std::endl;
-    }
-
-    int32_t type = 1;
-    int32_t h    = depth.rows;
-    int32_t w    = depth.cols;
-    int32_t nb   = 1;
-
-    fwrite(&type, sizeof(int32_t), 1, outimage);
-    fwrite(&h, sizeof(int32_t), 1, outimage);
-    fwrite(&w, sizeof(int32_t), 1, outimage);
-    fwrite(&nb, sizeof(int32_t), 1, outimage);
-
-    float *data = (float *)depth.data;
-
-    int32_t datasize = w * h * nb;
-    fwrite(data, sizeof(float), datasize, outimage);
-
-    fclose(outimage);
-    return 0;
-}
-
-int32_t readNormalDmb(const std::string file_path, cv::Mat_<cv::Vec3f> &normal) {
-    FILE *inimage;
-    inimage = fopen(file_path.c_str(), "rb");
-    if (!inimage) {
-        std::cout << "Error opening file " << file_path << std::endl;
-        return -1;
-    }
-
-    int32_t type, h, w, nb;
-
-    type = -1;
-
-    fread(&type, sizeof(int32_t), 1, inimage);
-    fread(&h, sizeof(int32_t), 1, inimage);
-    fread(&w, sizeof(int32_t), 1, inimage);
-    fread(&nb, sizeof(int32_t), 1, inimage);
-
-    if (type != 1) {
-        fclose(inimage);
-        return -1;
-    }
-
-    int32_t dataSize = h * w * nb;
-
-    float *data;
-    data = (float *)malloc(sizeof(float) * dataSize);
-    fread(data, sizeof(float), dataSize, inimage);
-
-    normal = cv::Mat(h, w, CV_32FC3, data);
-
-    fclose(inimage);
-    return 0;
-}
-
-int32_t writeNormalDmb(const std::string file_path, const cv::Mat_<cv::Vec3f> normal) {
-    FILE *outimage;
-    outimage = fopen(file_path.c_str(), "wb");
-    if (!outimage) {
-        std::cout << "Error opening file " << file_path << std::endl;
-    }
-
-    int32_t type = 1;
-    int32_t h    = normal.rows;
-    int32_t w    = normal.cols;
-    int32_t nb   = 3;
-
-    fwrite(&type, sizeof(int32_t), 1, outimage);
-    fwrite(&h, sizeof(int32_t), 1, outimage);
-    fwrite(&w, sizeof(int32_t), 1, outimage);
-    fwrite(&nb, sizeof(int32_t), 1, outimage);
-
-    float *data = (float *)normal.data;
-
-    int32_t datasize = w * h * nb;
-    fwrite(data, sizeof(float), datasize, outimage);
-
-    fclose(outimage);
-    return 0;
-}
-
 void PMMVS::release() {
     delete[] plane_hypotheses_host;
     delete[] costs_host;
@@ -293,12 +173,9 @@ void PMMVS::release() {
     }
 }
 
-void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem &problem) {
+void PMMVS::InuputInitialization(const Problem &problem) {
     images.clear();
     cameras.clear();
-
-    std::string image_folder = dense_folder + std::string("/images");
-    std::string cam_folder   = dense_folder + std::string("/cams");
 
     images.push_back(all_images[problem.ref_image_id]);
     cameras.push_back(all_cameras[problem.ref_image_id]);
@@ -326,7 +203,7 @@ void PMMVS::InuputInitialization(const std::string &dense_folder, const Problem 
     }
 }
 
-void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Problem &problem) {
+void PMMVS::CudaSpaceInitialization(const Problem &problem) {
     num_images = (int)images.size();
 
     size_t image_size = 0;
@@ -423,15 +300,6 @@ void PMMVS::CudaSpaceInitialization(const std::string &dense_folder, const Probl
         cudaMalloc((void **)&texture_depths_cuda, depth_size);
         cudaMemcpy(texture_depths_cuda, texture_depths_host, depth_size, cudaMemcpyHostToDevice);
 
-        std::stringstream result_path;
-        result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-                    << problem.ref_image_id;
-        std::string result_folder = result_path.str();
-        std::string suffix        = "/depths.dmb";
-        if (params.multi_geometry) {
-            suffix = "/depths_geom.dmb";
-        }
-        std::string cost_path          = result_folder + "/costs.dmb";
         cv::Mat_<float> ref_depth      = all_depths[problem.ref_image_id];
         cv::Mat_<cv::Vec3f> ref_normal = all_normals[problem.ref_image_id];
         cv::Mat_<float> ref_cost       = all_costs[problem.ref_image_id];

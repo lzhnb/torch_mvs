@@ -11,12 +11,13 @@ public:
     ~PMMVS();
 
     void load_samples(const std::string &dense_folder, const vector<Problem> problems);
-    void load_depths(const std::string &dense_folder, const vector<Problem> problems);
-    void load_normals(const std::string &dense_folder, const vector<Problem> problems);
-    void load_costs(const std::string &dense_folder, const vector<Problem> problems);
+    void load_geometry(
+        const vector<cv::Mat> &depth_maps,
+        const vector<cv::Mat> &normal_maps,
+        const vector<cv::Mat> &cost_maps);
 
-    void InuputInitialization(const std::string &dense_folder, const Problem &problem);
-    void CudaSpaceInitialization(const std::string &dense_folder, const Problem &problem);
+    void InuputInitialization(const Problem &problem);
+    void CudaSpaceInitialization(const Problem &problem);
     void RunPatchMatch();
     float4 GetPlaneHypothesis(const int32_t index);
     float GetCost(const int32_t index);
@@ -64,7 +65,7 @@ private:
 };
 
 vector<Problem> generate_sample_list(const std::string dense_folder);
-void process_problem(
+std::tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
     const std::string dense_folder,
     const Problem problem,
     const bool geom_consistency,
@@ -75,6 +76,8 @@ void process_problem(
 std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
     const std::string &dense_folder,
     const vector<Problem> &problems,
+    const vector<cv::Mat> &depth_maps,
+    const vector<cv::Mat> &normal_maps,
     const bool geom_consistency,
     const int32_t geom_consistent);
 

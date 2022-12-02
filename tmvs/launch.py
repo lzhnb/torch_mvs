@@ -52,24 +52,47 @@ if __name__ == "__main__":
     print(f"Loaded all samples!")
 
     for i in trange(num_images, desc="initialization"):
-        _C.process_problem(result_folder, problems[i], False, args.planar_prior, False, pmmvs)
+        depth_map, normal_map, cost_map = _C.process_problem(
+            result_folder, problems[i], False, args.planar_prior, False, pmmvs
+        )
+        save_folder = os.path.join(result_folder, "ACMP", f"{i:04}")
+        os.makedirs(save_folder, exist_ok=True)
+        np.save(os.path.join(save_folder, "depths.npy"), depth_map)
+        np.save(os.path.join(save_folder, "normals.npy"), normal_map)
+        np.save(os.path.join(save_folder, "costs.npy"), cost_map)
 
     for geom_iter in range(args.geom_iterations):
         multi_geometry = geom_iter != 0
-        pmmvs.load_depths(result_folder, problems)
-        print(f"Loaded all depths!")
-        pmmvs.load_normals(result_folder, problems)
-        print(f"Loaded all normals!")
-        pmmvs.load_costs(result_folder, problems)
-        print(f"Loaded all costs!")
+        all_depths = []
+        all_normals = []
+        all_costs = []
+        for i in trange(num_images, desc="loading for geometric consistent"):
+            save_folder = os.path.join(result_folder, "ACMP", f"{i:04}")
+            depth_suffix = "depths_geom.npy" if multi_geometry else "depths.npy"
+            all_depths.append(np.load(os.path.join(os.path.join(save_folder, depth_suffix))))
+            all_normals.append(np.load(os.path.join(os.path.join(save_folder, "normals.npy"))))
+            all_costs.append(np.load(os.path.join(os.path.join(save_folder, "costs.npy"))))
+        pmmvs.load_geometry(all_depths, all_normals, all_costs)
+
         # set geometry consistency parameters
         pmmvs.params.geom_consistency = True
         pmmvs.params.max_iterations = 2
         pmmvs.params.multi_geometry = multi_geometry
+        all_depths = []
+        all_normals = []
         for i in trange(num_images, desc="geometric consistent"):
-            _C.process_problem(result_folder, problems[i], True, False, multi_geometry, pmmvs)
+            depth_map, normal_map, cost_map = _C.process_problem(
+                result_folder, problems[i], True, False, multi_geometry, pmmvs
+            )
+            save_folder = os.path.join(result_folder, "ACMP", f"{i:04}")
+            os.makedirs(save_folder, exist_ok=True)
+            np.save(os.path.join(save_folder, "depths_geom.npy"), depth_map)
+            np.save(os.path.join(save_folder, "normals.npy"), normal_map)
+            np.save(os.path.join(save_folder, "costs.npy"), cost_map)
+            all_depths.append(depth_map)
+            all_normals.append(normal_map)
 
-    depths, normals = _C.run_fusion(result_folder, problems, True, args.geom_cons)
+    depths, normals = _C.run_fusion(result_folder, problems, all_depths, all_normals, True, args.geom_cons)
 
     os.makedirs(os.path.join(result_folder, "depth_normal"), exist_ok=True)
     for i, depth, normal in zip(range(num_images), depths, normals):

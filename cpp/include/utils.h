@@ -4,10 +4,10 @@
 
 namespace mvs {
 
-int32_t readDepthDmb(const std::string file_path, cv::Mat_<float> &depth);
-int32_t readNormalDmb(const std::string file_path, cv::Mat_<cv::Vec3f> &normal);
-int32_t writeDepthDmb(const std::string file_path, const cv::Mat_<float> depth);
-int32_t writeNormalDmb(const std::string file_path, const cv::Mat_<cv::Vec3f> normal);
+// int32_t readDepthDmb(const std::string file_path, cv::Mat_<float> &depth);
+// int32_t readNormalDmb(const std::string file_path, cv::Mat_<cv::Vec3f> &normal);
+// int32_t writeDepthDmb(const std::string file_path, const cv::Mat_<float> depth);
+// int32_t writeNormalDmb(const std::string file_path, const cv::Mat_<cv::Vec3f> normal);
 
 Camera ReadCamera(const std::string &cam_path);
 float3 Get3DPointonRefCam(const int32_t x, const int32_t y, const float depth, const Camera camera);

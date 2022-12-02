@@ -60,75 +60,33 @@ void PMMVS::load_samples(const std::string &dense_folder, const vector<Problem> 
     }
 }
 
-void PMMVS::load_depths(const std::string &dense_folder, const vector<Problem> problems) {
+void PMMVS::load_geometry(
+    const vector<cv::Mat> &depth_maps,
+    const vector<cv::Mat> &normal_maps,
+    const vector<cv::Mat> &cost_maps) {
     all_depths.clear();
-
-    const std::string suffix = params.multi_geometry ? "/depths_geom.dmb" : "/depths.dmb";
-    size_t num_problems      = problems.size();
-    for (size_t i = 0; i < num_problems; ++i) {
-        std::stringstream result_path;
-        result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-                    << problems[i].ref_image_id;
-        std::string result_folder = result_path.str();
-        std::string depth_path    = result_folder + suffix;
-        cv::Mat_<float> depth;
-        readDepthDmb(depth_path, depth);
-        all_depths.push_back(depth);
-    }
-}
-
-void PMMVS::load_normals(const std::string &dense_folder, const vector<Problem> problems) {
     all_normals.clear();
-
-    size_t num_problems = problems.size();
-    for (size_t i = 0; i < num_problems; ++i) {
-        std::stringstream result_path;
-        result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-                    << problems[i].ref_image_id;
-        std::string result_folder = result_path.str();
-        std::string normal_path   = result_folder + "/normals.dmb";
-        cv::Mat_<cv::Vec3f> normal;
-        readNormalDmb(normal_path, normal);
-        all_normals.push_back(normal);
-    }
-}
-
-void PMMVS::load_costs(const std::string &dense_folder, const vector<Problem> problems) {
     all_costs.clear();
 
-    size_t num_problems = problems.size();
-    for (size_t i = 0; i < num_problems; ++i) {
-        std::stringstream result_path;
-        result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-                    << problems[i].ref_image_id;
-        std::string result_folder = result_path.str();
-        std::string cost_path     = result_folder + "/costs.dmb";
-        cv::Mat_<float> cost;
-        readDepthDmb(cost_path, cost);
-        all_costs.push_back(cost);
+    size_t num_images = depth_maps.size();
+    for (size_t i = 0; i < num_images; ++i) {
+        all_depths.push_back(depth_maps[i]);
+        all_normals.push_back(normal_maps[i]);
+        all_costs.push_back(cost_maps[i]);
     }
 }
 
-void process_problem(
+std::tuple<cv::Mat, cv::Mat, cv::Mat> process_problem(
     const std::string dense_folder,
     const Problem problem,
     const bool geom_consistency,
     const bool planar_prior,
     const bool multi_geometrty,
     PMMVS mvs) {
-    // std::cout << "Processing image " << std::setw(4) << std::setfill('0') << problem.ref_image_id
-    //           << "..." << std::endl;
+
     cudaSetDevice(0);
-    std::stringstream result_path;
-    result_path << dense_folder << "/ACMP/" << std::setw(4) << std::setfill('0')
-                << problem.ref_image_id;
-    std::string result_folder = result_path.str();
-    mkdir(result_folder.c_str(), 0777);
-
-    // PMMVS mvs;
-    mvs.InuputInitialization(dense_folder, problem);
-
-    mvs.CudaSpaceInitialization(dense_folder, problem);
+    mvs.InuputInitialization(problem);
+    mvs.CudaSpaceInitialization(problem);
     mvs.RunPatchMatch();
 
     const int32_t width  = mvs.cameras[0].width;
@@ -138,6 +96,7 @@ void process_problem(
     cv::Mat_<cv::Vec3f> normals = cv::Mat::zeros(height, width, CV_32FC3);
     cv::Mat_<float> costs       = cv::Mat::zeros(height, width, CV_32FC1);
 
+    // TODO: put the export on CUDA
     for (int32_t col = 0; col < width; ++col) {
         for (int32_t row = 0; row < height; ++row) {
             int32_t center          = row * width + col;
@@ -173,8 +132,8 @@ void process_problem(
                 cv::line(srcImage, triangle.pt2, triangle.pt3, cv::Scalar(0, 0, 255));
             }
         }
-        std::string triangulation_path = result_folder + "/triangulation.png";
-        cv::imwrite(triangulation_path, srcImage);
+        // std::string triangulation_path = result_folder + "/triangulation.png";
+        // cv::imwrite(triangulation_path, srcImage);
 
         cv::Mat_<float> mask_tri = cv::Mat::zeros(height, width, CV_32FC1);
         vector<float4> planeParams_tri;
@@ -228,8 +187,6 @@ void process_problem(
                 }
             }
         }
-        // std::string depth_path = result_folder + "/depths_prior.dmb";
-        //  writeDepthDmb(depth_path, priordepths);
 
         mvs.CudaPlanarPriorInitialization(planeParams_tri, mask_tri);
         mvs.RunPatchMatch();
@@ -250,16 +207,9 @@ void process_problem(
     if (geom_consistency) {
         suffix = "/depths_geom.dmb";
     }
-    std::string depth_path  = result_folder + suffix;
-    std::string normal_path = result_folder + "/normals.dmb";
-    std::string cost_path   = result_folder + "/costs.dmb";
-    writeDepthDmb(depth_path, depths);
-    writeNormalDmb(normal_path, normals);
-    writeDepthDmb(cost_path, costs);
 
     mvs.release();
-    // std::cout << "Processing image " << std::setw(4) << std::setfill('0') << problem.ref_image_id
-    //           << " done!" << std::endl;
+    return std::make_tuple(depths, normals, costs);
 }
 
 }  // namespace mvs
