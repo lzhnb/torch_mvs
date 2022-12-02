@@ -10,10 +10,7 @@ int32_t writeDepthDmb(const std::string file_path, const cv::Mat_<float> depth);
 int32_t writeNormalDmb(const std::string file_path, const cv::Mat_<cv::Vec3f> normal);
 
 Camera ReadCamera(const std::string &cam_path);
-float3 Get3DPointonWorld(const int32_t x, const int32_t y, const float depth, const Camera camera);
 float3 Get3DPointonRefCam(const int32_t x, const int32_t y, const float depth, const Camera camera);
-void ProjectonCamera(const float3 PointX, const Camera camera, float2 &point, float &depth);
-float GetAngle(const cv::Vec3f &v1, const cv::Vec3f &v2);
 
 #define CUDA_SAFE_CALL(error) CudaSafeCall(error, __FILE__, __LINE__)
 #define CUDA_CHECK_ERROR() CudaCheckError(__FILE__, __LINE__)

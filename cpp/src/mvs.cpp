@@ -131,31 +131,6 @@ Camera ReadCamera(const std::string &cam_path) {
     return camera;
 }
 
-float3 Get3DPointonWorld(const int32_t x, const int32_t y, const float depth, const Camera camera) {
-    float3 pointX;
-    float3 tmpX;
-    // Reprojection
-    pointX.x = depth * (x - camera.K[2]) / camera.K[0];
-    pointX.y = depth * (y - camera.K[5]) / camera.K[4];
-    pointX.z = depth;
-
-    // Rotation
-    tmpX.x = camera.R[0] * pointX.x + camera.R[3] * pointX.y + camera.R[6] * pointX.z;
-    tmpX.y = camera.R[1] * pointX.x + camera.R[4] * pointX.y + camera.R[7] * pointX.z;
-    tmpX.z = camera.R[2] * pointX.x + camera.R[5] * pointX.y + camera.R[8] * pointX.z;
-
-    // Transformation
-    float3 C;
-    C.x      = -(camera.R[0] * camera.t[0] + camera.R[3] * camera.t[1] + camera.R[6] * camera.t[2]);
-    C.y      = -(camera.R[1] * camera.t[0] + camera.R[4] * camera.t[1] + camera.R[7] * camera.t[2]);
-    C.z      = -(camera.R[2] * camera.t[0] + camera.R[5] * camera.t[1] + camera.R[8] * camera.t[2]);
-    pointX.x = tmpX.x + C.x;
-    pointX.y = tmpX.y + C.y;
-    pointX.z = tmpX.z + C.z;
-
-    return pointX;
-}
-
 float3 Get3DPointonRefCam(
     const int32_t x, const int32_t y, const float depth, const Camera camera) {
     float3 pointX;
@@ -165,27 +140,6 @@ float3 Get3DPointonRefCam(
     pointX.z = depth;
 
     return pointX;
-}
-
-void ProjectonCamera(const float3 PointX, const Camera camera, float2 &point, float &depth) {
-    float3 tmp;
-    tmp.x = camera.R[0] * PointX.x + camera.R[1] * PointX.y + camera.R[2] * PointX.z + camera.t[0];
-    tmp.y = camera.R[3] * PointX.x + camera.R[4] * PointX.y + camera.R[5] * PointX.z + camera.t[1];
-    tmp.z = camera.R[6] * PointX.x + camera.R[7] * PointX.y + camera.R[8] * PointX.z + camera.t[2];
-
-    depth   = camera.K[6] * tmp.x + camera.K[7] * tmp.y + camera.K[8] * tmp.z;
-    point.x = (camera.K[0] * tmp.x + camera.K[1] * tmp.y + camera.K[2] * tmp.z) / depth;
-    point.y = (camera.K[3] * tmp.x + camera.K[4] * tmp.y + camera.K[5] * tmp.z) / depth;
-}
-
-float GetAngle(const cv::Vec3f &v1, const cv::Vec3f &v2) {
-    float dot_product = v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
-    float angle       = acosf(dot_product);
-    // if angle is not a number the dot product was 1 and thus the two vectors should be identical
-    // --> return 0
-    if (angle != angle) return 0.0f;
-
-    return angle;
 }
 
 int32_t readDepthDmb(const std::string file_path, cv::Mat_<float> &depth) {

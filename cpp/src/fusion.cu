@@ -56,7 +56,7 @@ __global__ void fusion_kernel(
     const float* __restrict__ depths_ptr,
     const float* __restrict__ normals_ptr,
     const Camera* __restrict__ cameras_ptr,
-    const Problem* __restrict__ problems_ptr,
+    const Problem* __restrict__ problem_ptr,
     const int32_t rows,
     const int32_t cols,
     const int32_t geom_const,
@@ -70,7 +70,7 @@ __global__ void fusion_kernel(
 
     if (ref_c >= cols || ref_r >= rows) return;
 
-    const int32_t ref_id     = problems_ptr->ref_image_id;
+    const int32_t ref_id     = problem_ptr->ref_image_id;
     const int32_t ref_offset = ref_id * rows * cols;
     const float ref_depth    = depths_ptr[ref_offset + ref_idx];
     const float3 ref_normal  = make_float3(
@@ -81,20 +81,22 @@ __global__ void fusion_kernel(
     if (ref_depth <= 0.0) return;
 
     int2 used_list[MAX_IMAGES];
-    for (int32_t i = 0; i < problems_ptr->num_ngb; ++i) { used_list[i] = make_int2(-1, -1); }
+    for (int32_t i = 0; i < problem_ptr->num_ngb; ++i) { used_list[i] = make_int2(-1, -1); }
 
-    if (masks_ptr[ref_offset] == 1) return;
+    if (masks_ptr[ref_offset + ref_idx] == 1) return;
 
-    float3 ref_point    = get_3D_point_on_world(ref_c, ref_r, ref_depth, cameras_ptr[ref_id]);
-    float3 const_point  = ref_point;
-    float3 const_normal = ref_normal;
-    int32_t num_const   = 0;
+    const Camera ref_cam   = cameras_ptr[ref_id];
+    const float3 ref_point = get_3D_point_on_world(ref_c, ref_r, ref_depth, ref_cam);
+    float3 const_point     = ref_point;
+    float3 const_normal    = ref_normal;
+    int32_t num_const      = 0;
 
-    for (int32_t j = 0; j < problems_ptr->num_ngb; ++j) {
-        const int32_t src_id     = problems_ptr->src_image_ids[j];
+    for (int32_t j = 0; j < problem_ptr->num_ngb; ++j) {
+        const int32_t src_id     = problem_ptr->src_image_ids[j];
+        const Camera src_cam     = cameras_ptr[src_id];
         const int32_t src_offset = src_id * rows * cols;
         float proj_depth;
-        const float2 point  = project_on_camera(ref_point, cameras_ptr[src_id], proj_depth);
+        const float2 point  = project_on_camera(ref_point, src_cam, proj_depth);
         const int32_t src_r = int(point.y + 0.5f);
         const int32_t src_c = int(point.x + 0.5f);
         if (src_c >= 0 && src_c < cols && src_r >= 0 && src_r < rows) {
@@ -106,9 +108,8 @@ __global__ void fusion_kernel(
                 normals_ptr[(src_offset + src_idx) * 3 + 2]);
             if (src_depth <= 0) continue;
 
-            const float3 src_point =
-                get_3D_point_on_world(src_c, src_r, src_depth, cameras_ptr[src_id]);
-            const float2 tmp_pt = project_on_camera(src_point, cameras_ptr[ref_id], proj_depth);
+            const float3 src_point   = get_3D_point_on_world(src_c, src_r, src_depth, src_cam);
+            const float2 tmp_pt      = project_on_camera(src_point, ref_cam, proj_depth);
             const float reproj_error = sqrt(pow(ref_c - tmp_pt.x, 2) + pow(ref_r - tmp_pt.y, 2));
             const float relative_depth_diff = fabs(proj_depth - ref_depth) / ref_depth;
             const float angle               = get_angle(ref_normal, src_normal);
@@ -139,7 +140,7 @@ __global__ void fusion_kernel(
 
         // get valid depth and normal
         float proj_depth;
-        const float2 proj_point  = project_on_camera(const_point, cameras_ptr[ref_id], proj_depth);
+        const float2 proj_point  = project_on_camera(const_point, ref_cam, proj_depth);
         const int32_t proj_ref_r = int32_t(proj_point.y + 0.5f),
                       proj_ref_c = int32_t(proj_point.x + 0.5f);
 
@@ -151,9 +152,9 @@ __global__ void fusion_kernel(
             proj_normal_ptr[proj_index * 3 + 1] = const_normal.y;
             proj_normal_ptr[proj_index * 3 + 2] = const_normal.z;
         }
-        for (int j = 0; j < problems_ptr->num_ngb; ++j) {
+        for (int j = 0; j < problem_ptr->num_ngb; ++j) {
             if (used_list[j].x == -1) continue;
-            const int32_t offset = problems_ptr->src_image_ids[j] * rows * cols +
+            const int32_t offset = problem_ptr->src_image_ids[j] * rows * cols +
                                    used_list[j].y * cols + used_list[j].x;
             masks_ptr[offset] = 1;
         }
@@ -292,8 +293,7 @@ std::tuple<vector<cv::Mat>, vector<cv::Mat>> run_fusion(
             geom_consistent,
             masks_ptr,
             proj_depth_ptr,
-            proj_normal_ptr
-        );
+            proj_normal_ptr);
         cudaMemcpy(
             output_proj_depth.ptr<float>(),
             proj_depth_ptr,
