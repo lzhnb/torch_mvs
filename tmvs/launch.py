@@ -1,11 +1,11 @@
 # Copyright (c) Zhihao Liang. All rights reserved.
-import os
 import argparse
+import os
 
 import numpy as np
 from tqdm import trange
 
-from . import libmvs as _C
+from tmvs import _C
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert colmap camera")
@@ -98,7 +98,9 @@ if __name__ == "__main__":
             all_depths.append(depth_map)
             all_normals.append(normal_map)
 
-    depths, normals = _C.run_fusion(result_folder, problems, all_depths, all_normals, True, args.geom_cons)
+    depths, normals = _C.run_fusion(
+        result_folder, problems, all_depths, all_normals, True, args.geom_cons
+    )
 
     os.makedirs(os.path.join(result_folder, args.suffix, "depth_normal"), exist_ok=True)
     for i, depth, normal in zip(range(num_images), depths, normals):

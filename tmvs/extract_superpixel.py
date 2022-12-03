@@ -76,7 +76,14 @@ def extract_superpixel(image, weight=None) -> np.ndarray:
     return segment
 
 
-def seg_func(image_dir, save_dir, mask_dir = None, var_windlen: int = 15, var_thresh: float = 0.2, var_thresh2: float = -1):
+def seg_func(
+    image_dir,
+    save_dir,
+    mask_dir=None,
+    var_windlen: int = 15,
+    var_thresh: float = 0.2,
+    var_thresh2: float = -1,
+):
     filename = os.path.basename(image_dir)
     rgb = cv2.imread(image_dir)
     gray = cv2.imread(image_dir, cv2.IMREAD_GRAYSCALE) / 255
@@ -89,12 +96,12 @@ def seg_func(image_dir, save_dir, mask_dir = None, var_windlen: int = 15, var_th
     if mask_dir is not None:
         mask = np.load(mask_dir)  # single channel
         h, w = mask.shape
-        segment_ids = np.where(mask==True, segment_ids, 0)
+        segment_ids = np.where(mask == True, segment_ids, 0)
 
         all_seg_ids = np.unique(segment_ids)
-        for segid in all_seg_ids[1:]: # jump 0
-            area = np.where(segment_ids==segid)
-            if len(area[0]) < h*w/128:
+        for segid in all_seg_ids[1:]:  # jump 0
+            area = np.where(segment_ids == segid)
+            if len(area[0]) < h * w / 128:
                 segment_ids[area] = 0
 
     """ Efficient implementation """
@@ -109,11 +116,14 @@ def seg_func(image_dir, save_dir, mask_dir = None, var_windlen: int = 15, var_th
     """ Filter segs with variance map """
     if var_thresh2 > 0.0:
         from tmvs import _C
+
         filter_segment_ids_map = _C.filter_by_var_map(var_map, segment_ids_map, var_thresh2)
     else:
         filter_segment_ids_map = segment_ids_map
 
-    color_bar = np.random.randint(0, 255, [max(filter_segment_ids_map.max(), segment_ids.max()) + 1, 3])
+    color_bar = np.random.randint(
+        0, 255, [max(filter_segment_ids_map.max(), segment_ids.max()) + 1, 3]
+    )
     color_bar[0] = 0
     color_seg_var = color_bar[filter_segment_ids_map]
     color_seg = color_bar[segment_ids]
@@ -143,12 +153,12 @@ if __name__ == "__main__":
     assert num_processes > 0
 
     if num_processes == 1:
-        """ Single preprocess """
+        """Single preprocess"""
         for filename in tqdm(filenames):
             image_path = os.path.join(image_dir, filename)
             seg_func(image_path, save_dir, None, 15, 0.2, -1)
     else:
-        """ Multiple preprocess """
+        """Multiple preprocess"""
         queues = []
         for filename in tqdm(filenames):
             image_path = os.path.join(image_dir, filename)

@@ -10,7 +10,6 @@ from tqdm import tqdm
 
 from tmvs import _C
 
-
 NTHEADS = 64
 POISSON_MESH_THRESH = 0.03
 CLEAN_PTS_THRESH = 0.03
@@ -397,13 +396,15 @@ if __name__ == "__main__":
             )  # for mvs empty area, use vps normal
             fusion_planar_mask[fusion_planar_mask == 300] = 0  # for objects segs, remove them
             np.save(
-                os.path.join(save_dir, f"../../{args.mask_suffix}", f"{name}.npy"), fusion_planar_mask
+                os.path.join(save_dir, f"../../{args.mask_suffix}", f"{name}.npy"),
+                fusion_planar_mask,
             )
         else:
             fusion_planar_mask = np.zeros_like(planar_mask)
 
         if args.vis:
             import copy
+
             import cv2
 
             # read image

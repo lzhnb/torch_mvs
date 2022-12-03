@@ -7,12 +7,12 @@ from tqdm import tqdm
 
 
 def vis_depth_norm(
-    data_dir: str, 
-    depth_norm_dir: str, 
-    save_dir: str, 
-    H: float=480,
-    W: float=640,
-    filter: Optional[int] = None
+    data_dir: str,
+    depth_norm_dir: str,
+    save_dir: str,
+    H: float = 480,
+    W: float = 640,
+    filter: Optional[int] = None,
 ) -> None:
     # Reverse dirs
     cames_dir = os.path.join(data_dir, "pose")
@@ -117,18 +117,8 @@ if __name__ == "__main__":
         default="./",
         help="input_folder to store the predicted depth and normal.",
     )
-    parser.add_argument(
-        "--height",
-        "-H",
-        type=int,
-        default=480
-    )
-    parser.add_argument(
-        "--width",
-        "-W",
-        type=int,
-        default=640
-    )
+    parser.add_argument("--height", "-H", type=int, default=480)
+    parser.add_argument("--width", "-W", type=int, default=640)
     parser.add_argument(
         "--filter",
         "-f",
@@ -138,5 +128,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    vis_depth_norm(args.data_dir, args.depthnorm_dir, args.save_dir, args.height, args.width, args.filter)
-    
+    vis_depth_norm(
+        args.data_dir, args.depthnorm_dir, args.save_dir, args.height, args.width, args.filter
+    )
