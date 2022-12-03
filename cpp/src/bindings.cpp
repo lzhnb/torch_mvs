@@ -5,6 +5,7 @@
 
 #include "primitives.h"
 #include "mvs.h"
+#include "segmentation.h"
 #include "ndarray_converter.h"
 
 namespace py = pybind11;
@@ -57,6 +58,10 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
     m.def("generate_sample_list", &generate_sample_list);
     m.def("process_problem", &process_problem);
     m.def("run_fusion", &run_fusion);
+
+    // segmentation
+    m.def("fusion_planar_mask", &mvs::fusion_planar_mask);
+    m.def("filter_by_var_map", &filter_by_var_map);
 }
 
 }  // namespace mvs

@@ -108,7 +108,7 @@ def seg_func(image_dir, save_dir, mask_dir = None, var_windlen: int = 15, var_th
 
     """ Filter segs with variance map """
     if var_thresh2 > 0.0:
-        from gmvs.lib.build import planar_initer as _C
+        from tmvs import _C
         filter_segment_ids_map = _C.filter_by_var_map(var_map, segment_ids_map, var_thresh2)
     else:
         filter_segment_ids_map = segment_ids_map

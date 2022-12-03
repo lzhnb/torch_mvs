@@ -100,9 +100,9 @@ if __name__ == "__main__":
 
     depths, normals = _C.run_fusion(result_folder, problems, all_depths, all_normals, True, args.geom_cons)
 
-    os.makedirs(os.path.join(result_folder, "depth_normal"), exist_ok=True)
+    os.makedirs(os.path.join(result_folder, args.suffix, "depth_normal"), exist_ok=True)
     for i, depth, normal in zip(range(num_images), depths, normals):
         depth = depth[..., None]
         depth_normal = np.concatenate([depth, normal], axis=-1)
-        save_file = os.path.join(result_folder, "depth_normal", f"{i:04}.npy")
+        save_file = os.path.join(result_folder, args.suffix, "depth_normal", f"{i:04}.npy")
         np.save(save_file, depth_normal)

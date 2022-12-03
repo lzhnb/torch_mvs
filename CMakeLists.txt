@@ -19,6 +19,7 @@ cuda_add_library(
     cpp/src/mvs.cpp
     cpp/src/patch_match.cu
     cpp/src/fusion.cu
+    cpp/src/segmentation.cu
     cpp/src/launch.cpp)
 
 target_include_directories(
