@@ -1,6 +1,7 @@
 # Copyright (c) Zhihao Liang. All rights reserved.
 import argparse
 import os
+import shutil
 
 import numpy as np
 from tqdm import trange
@@ -37,6 +38,19 @@ if __name__ == "__main__":
         help="planar prior initilization",
     )
     parser.add_argument(
+        "--input_depth_normal_dir",
+        "-idnd",
+        type=str,
+        default=None,
+        help="directory to store the input depth and normal for initialization",
+    )
+    parser.add_argument(
+        "--dn_input",
+        "-di",
+        action="store_true",
+        help="if use depth and normal input for initialization, please make sure there is */depth.npy and */normal.npy under input_depth_normal_dir",
+    )
+    parser.add_argument(
         "--geom_cons",
         "-gc",
         type=int,
@@ -57,23 +71,33 @@ if __name__ == "__main__":
     pmmvs.load_samples(result_folder, problems)
     print(f"Loaded all samples!")
 
-    for i in trange(num_images, desc="initialization"):
-        depth_map, normal_map, cost_map = _C.process_problem(
-            result_folder, problems[i], False, args.planar_prior, False, pmmvs
-        )
-        save_folder = os.path.join(result_folder, args.suffix, f"{i:04}")
+    for ref_id in trange(num_images, desc="Initialization"):
+        save_folder = os.path.join(result_folder, args.suffix, f"{ref_id:04}")
         os.makedirs(save_folder, exist_ok=True)
-        np.save(os.path.join(save_folder, "depths.npy"), depth_map)
-        np.save(os.path.join(save_folder, "normals.npy"), normal_map)
-        np.save(os.path.join(save_folder, "costs.npy"), cost_map)
+        if args.dn_input:
+            depth_normal_dir = os.path.join(args.input_depth_normal_dir, f"{ref_id:04}")
+            shutil.copy2(
+                os.path.join(depth_normal_dir, "depth.npy"), os.path.join(save_folder, "depths.npy")
+            )
+            shutil.copy2(
+                os.path.join(depth_normal_dir, "normal.npy"), os.path.join(save_folder, "normals.npy")
+            )
+            shutil.copy2(os.path.join(depth_normal_dir, "cost.npy"), os.path.join(save_folder, "costs.npy"))
+        else:
+            depth_map, normal_map, cost_map = _C.process_problem(
+                result_folder, problems[ref_id], False, args.planar_prior, False, pmmvs
+            )
+            np.save(os.path.join(save_folder, "depths.npy"), depth_map)
+            np.save(os.path.join(save_folder, "normals.npy"), normal_map)
+            np.save(os.path.join(save_folder, "costs.npy"), cost_map)
 
     for geom_iter in range(args.geom_iterations):
         multi_geometry = geom_iter != 0
         all_depths = []
         all_normals = []
         all_costs = []
-        for i in trange(num_images, desc="loading for geometric consistent"):
-            save_folder = os.path.join(result_folder, args.suffix, f"{i:04}")
+        for ref_id in trange(num_images, desc="Loading for geometric consistent"):
+            save_folder = os.path.join(result_folder, args.suffix, f"{ref_id:04}")
             depth_suffix = "depths_geom.npy" if multi_geometry else "depths.npy"
             all_depths.append(np.load(os.path.join(os.path.join(save_folder, depth_suffix))))
             all_normals.append(np.load(os.path.join(os.path.join(save_folder, "normals.npy"))))
@@ -86,11 +110,11 @@ if __name__ == "__main__":
         pmmvs.params.multi_geometry = multi_geometry
         all_depths = []
         all_normals = []
-        for i in trange(num_images, desc="geometric consistent"):
+        for ref_id in trange(num_images, desc="Geometric consistent"):
             depth_map, normal_map, cost_map = _C.process_problem(
-                result_folder, problems[i], True, False, multi_geometry, pmmvs
+                result_folder, problems[ref_id], True, False, multi_geometry, pmmvs
             )
-            save_folder = os.path.join(result_folder, args.suffix, f"{i:04}")
+            save_folder = os.path.join(result_folder, args.suffix, f"{ref_id:04}")
             os.makedirs(save_folder, exist_ok=True)
             np.save(os.path.join(save_folder, "depths_geom.npy"), depth_map)
             np.save(os.path.join(save_folder, "normals.npy"), normal_map)
