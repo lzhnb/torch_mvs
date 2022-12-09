@@ -358,10 +358,10 @@ def calc_score(
 
 def processing_single_scene(args: argparse.Namespace) -> None:
 
-    image_dir = os.path.join(args.dense_folder, "images")
-    model_dir = os.path.join(args.dense_folder, "sparse")
-    cam_dir = os.path.join(args.save_folder, "cams")
-    image_converted_dir = os.path.join(args.save_folder, "images")
+    image_dir = os.path.join(args.colmap_dir, "images")
+    model_dir = os.path.join(args.colmap_dir, "sparse")
+    cam_dir = os.path.join(args.save_dir, "cams")
+    image_converted_dir = os.path.join(args.save_dir, "images")
 
     if os.path.exists(image_converted_dir):
         print("remove:{}".format(image_converted_dir))
@@ -548,7 +548,7 @@ def processing_single_scene(args: argparse.Namespace) -> None:
                     depth_ranges[i + 1][3],
                 )
             )
-    with open(os.path.join(args.save_folder, "pair.txt"), "w") as f:
+    with open(os.path.join(args.save_dir, "pair.txt"), "w") as f:
         f.write("%d\n" % len(images))
         for i, sorted_score in enumerate(view_sel):
             # f.write("%d\n%d " % (i, len(sorted_score)))
@@ -578,16 +578,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert colmap camera")
 
     parser.add_argument(
-        "--dense_folder",
-        required=True,
+        "--colmap_dir",
         type=str,
-        help="dense_folder to store the dense results of COLMAP.",
+        required=True,
+        help="colmap_dir to store the dense results of COLMAP.",
     )
     parser.add_argument(
-        "--save_folder",
-        required=True,
+        "--save_dir",
         type=str,
-        help="save_folder to store the results.",
+        required=True,
+        help="save_dir to store the results.",
     )
 
     parser.add_argument(
@@ -613,5 +613,5 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    os.makedirs(os.path.join(args.save_folder), exist_ok=True)
+    os.makedirs(os.path.join(args.save_dir), exist_ok=True)
     processing_single_scene(args)

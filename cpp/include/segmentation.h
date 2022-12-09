@@ -4,7 +4,7 @@
 
 namespace mvs {
 
-cv::Mat fusion_planar_mask(
+cv::Mat fusion_textureless_mask(
     const cv::Mat& seg_ids,
     const cv::Mat& planar_mask,
     const cv::Mat& filter_normals,

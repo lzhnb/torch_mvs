@@ -4,6 +4,7 @@ import argparse
 import copy
 import multiprocessing
 import os
+from typing import Callable, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -12,7 +13,33 @@ from skimage.util import img_as_float
 from tqdm import tqdm
 
 
-def start_process_pool(worker_function, parameters, num_processes, timeout=None):
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--img_dir", type=str, required=True, help="directory to store input images"
+    )
+    parser.add_argument(
+        "--save_dir",
+        type=str,
+        required=True,
+        help="directory to store superpixel segmentation results",
+    )
+
+    args = parser.parse_args()
+    return args
+
+
+def start_process_pool(
+    worker_function: Callable, parameters: List[Tuple], num_processes: int
+) -> None:
+    """process pool for multi processing
+
+    Args:
+        worker_function (Callable): single funcion
+        parameters (List[Tuple]): list of input parameters
+        num_processes (int): the number of multi processing
+    """
     if len(parameters) > 0:
         if num_processes <= 1:
             print(
@@ -36,31 +63,42 @@ def start_process_pool(worker_function, parameters, num_processes, timeout=None)
         return None
 
 
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--img_dir", type=str, help="path to scannet data", required=True)
-    parser.add_argument("--save_dir", type=str, help="path to scannet data", required=True)
-    args = parser.parse_args()
-    return args
+def winVar(img: np.ndarray, wlen: int = 3) -> np.ndarray:
+    """calculate the variance map of an image
 
+    Args:
+        img (np.ndarray): input image
+        wlen (int, optional): windows size to calculate variance. Defaults to 3.
 
-def winVar(img, wlen: int = 3):
-    """calculate the variance map of an image"""
+    Returns:
+        np.ndarray: variance map
+    """
     wmean, wsqrmean = (
         cv2.boxFilter(x, -1, (wlen, wlen), borderType=cv2.BORDER_REFLECT) for x in (img, img * img)
     )
     return np.sqrt(np.abs(wsqrmean - wmean * wmean))
 
 
-def extract_superpixel(image, weight=None) -> np.ndarray:
-    image = image * weight if weight is not None else image
-    h, w, c = image.shape
+def extract_superpixel(image: np.ndarray, weight: Optional[np.ndarray] = None) -> np.ndarray:
+    """extracting superpixel
 
+    Args:
+        image (np.ndarray): input image
+        weight (Optional[np.ndarray], optional): weight map of input image. Defaults to None.
+
+    Returns:
+        np.ndarray: segmentation result
+    """
+    image = image * weight if weight is not None else image
+    h, w, _ = image.shape
+
+    # resize image
     resize_image = cv2.resize(image, (384, 288))
     resize_image = img_as_float(resize_image)
 
     segment = felzenszwalb(resize_image, scale=100, sigma=0.5, min_size=5)  # for ScanNet
 
+    # set segment ids
     n = 1
     for i in range(segment.max()):
         npixel = np.sum(segment == (i + 1))
@@ -71,22 +109,33 @@ def extract_superpixel(image, weight=None) -> np.ndarray:
         else:
             segment[segment == (i + 1)] = 0
 
+    # recover the image size
     segment = cv2.resize(segment, (w, h), interpolation=cv2.INTER_NEAREST)
 
     return segment
 
 
 def seg_func(
-    image_dir,
-    save_dir,
-    mask_dir=None,
+    img_file: str,
+    save_dir: str,
+    mask_dir: Optional[str] = None,
     var_windlen: int = 15,
     var_thresh: float = 0.2,
     var_thresh2: float = -1,
-):
-    filename = os.path.basename(image_dir)
-    rgb = cv2.imread(image_dir)
-    gray = cv2.imread(image_dir, cv2.IMREAD_GRAYSCALE) / 255
+) -> None:
+    """superpixel segmentation function
+
+    Args:
+        img_file (str): filename of image.
+        save_dir (str): directory to store segmentation results.
+        mask_dir (Optional[str], optional): directory to store the binary mask. Defaults to None.
+        var_windlen (int, optional): windows size to calculate variance. Defaults to 1.
+        var_thresh (float, optional): threshold of variance. Defaults to 0.2.
+        var_thresh2 (float, optional): threshold of variance 2. Defaults to -1.
+    """
+    filename = os.path.basename(img_file)
+    rgb = cv2.imread(img_file)
+    gray = cv2.imread(img_file, cv2.IMREAD_GRAYSCALE) / 255
     segment_ids = extract_superpixel(rgb)
 
     kernel = np.ones((11, 11), dtype=np.uint8)
@@ -104,7 +153,7 @@ def seg_func(
             if len(area[0]) < h * w / 128:
                 segment_ids[area] = 0
 
-    """ Efficient implementation """
+    # Efficient implementation
     if var_thresh > 0.0 and var_windlen > 1:
         var_map = winVar(gray, wlen=var_windlen)
         var_map = var_map / var_map.max()
@@ -113,7 +162,7 @@ def seg_func(
     else:
         segment_ids_map = segment_ids
 
-    """ Filter segs with variance map """
+    # Filter segs with variance map
     if var_thresh2 > 0.0:
         from tmvs import _C
 
@@ -142,26 +191,26 @@ if __name__ == "__main__":
     image_dir = args.img_dir
     save_dir = args.save_dir
 
+    # make save directories
     os.makedirs(save_dir, exist_ok=True)
     os.makedirs(os.path.join(save_dir, "segrgb"), exist_ok=True)
     os.makedirs(os.path.join(save_dir, "segid_npy"), exist_ok=True)
 
-    filenames = os.listdir(image_dir)
-    filenames.sort()
+    # get the names of images
+    img_list = os.listdir(image_dir)
+    img_list.sort()
 
     num_processes = 32
     assert num_processes > 0
 
-    if num_processes == 1:
-        """Single preprocess"""
-        for filename in tqdm(filenames):
-            image_path = os.path.join(image_dir, filename)
-            seg_func(image_path, save_dir, None, 15, 0.2, -1)
-    else:
-        """Multiple preprocess"""
+    if num_processes == 1:  # Single preprocess
+        for img_name in tqdm(img_list):
+            image_file = os.path.join(image_dir, img_name)
+            seg_func(image_file, save_dir, None, 15, 0.2, -1)
+    else:  # Multiple preprocess
         queues = []
-        for filename in tqdm(filenames):
-            image_path = os.path.join(image_dir, filename)
-            # queues.append((image_path, save_dir, None, 15, 0.2, -1))
-            queues.append((image_path, save_dir, None, 15, -1, -1))  # for living_room
+        for img_name in tqdm(img_list):
+            image_file = os.path.join(image_dir, img_name)
+            queues.append((image_file, save_dir, None, 15, 0.2, -1))
+            # queues.append((image_file, save_dir, None, 15, -1, -1))  # for living_room
         start_process_pool(seg_func, queues, num_processes=32)

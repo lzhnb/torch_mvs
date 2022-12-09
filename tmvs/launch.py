@@ -8,15 +8,16 @@ from tqdm import trange
 
 from tmvs import _C
 
-if __name__ == "__main__":
+
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Convert colmap camera")
 
     parser.add_argument(
-        "--result_folder",
-        "-rf",
-        required=True,
+        "--result_dir",
+        "-rd",
         type=str,
-        help="result_folder to store the dense results of COLMAP.",
+        required=True,
+        help="directory to store the dense results of COLMAP.",
     )
     parser.add_argument(
         "--suffix",
@@ -58,50 +59,60 @@ if __name__ == "__main__":
         help="number of geometric consistent to filter the fusion point cloud, default to 2",
     )
     args = parser.parse_args()
+    return args
 
-    result_folder = args.result_folder
-    problems = _C.generate_sample_list(os.path.join(result_folder, "pair.txt"))
 
-    os.makedirs(os.path.join(result_folder, args.suffix), exist_ok=True)
+if __name__ == "__main__":
+    args = get_args()
+
+    result_dir = args.result_dir
+    problems = _C.generate_sample_list(os.path.join(result_dir, "pair.txt"))
+
+    os.makedirs(os.path.join(result_dir, args.suffix), exist_ok=True)
 
     num_images = len(problems)
     print(f"There are {num_images} problems needed to be processed!")
 
     pmmvs = _C.PMMVS()
-    pmmvs.load_samples(result_folder, problems)
+    pmmvs.load_samples(result_dir, problems)
     print(f"Loaded all samples!")
 
+    # initialization
     for ref_id in trange(num_images, desc="Initialization"):
-        save_folder = os.path.join(result_folder, args.suffix, f"{ref_id:04}")
-        os.makedirs(save_folder, exist_ok=True)
-        if args.dn_input:
+        save_dir = os.path.join(result_dir, args.suffix, f"{ref_id:04}")
+        os.makedirs(save_dir, exist_ok=True)
+        if args.dn_input:  # given initial depths and normals
             depth_normal_dir = os.path.join(args.input_depth_normal_dir, f"{ref_id:04}")
             shutil.copy2(
-                os.path.join(depth_normal_dir, "depth.npy"), os.path.join(save_folder, "depths.npy")
+                os.path.join(depth_normal_dir, "depth.npy"), os.path.join(save_dir, "depths.npy")
             )
             shutil.copy2(
-                os.path.join(depth_normal_dir, "normal.npy"), os.path.join(save_folder, "normals.npy")
+                os.path.join(depth_normal_dir, "normal.npy"),
+                os.path.join(save_dir, "normals.npy"),
             )
-            shutil.copy2(os.path.join(depth_normal_dir, "cost.npy"), os.path.join(save_folder, "costs.npy"))
-        else:
+            shutil.copy2(
+                os.path.join(depth_normal_dir, "cost.npy"), os.path.join(save_dir, "costs.npy")
+            )
+        else:  # initialization from uniform distribution or triangular planar prior
             depth_map, normal_map, cost_map = _C.process_problem(
-                result_folder, problems[ref_id], False, args.planar_prior, False, pmmvs
+                result_dir, problems[ref_id], False, args.planar_prior, False, pmmvs
             )
-            np.save(os.path.join(save_folder, "depths.npy"), depth_map)
-            np.save(os.path.join(save_folder, "normals.npy"), normal_map)
-            np.save(os.path.join(save_folder, "costs.npy"), cost_map)
+            np.save(os.path.join(save_dir, "depths.npy"), depth_map)
+            np.save(os.path.join(save_dir, "normals.npy"), normal_map)
+            np.save(os.path.join(save_dir, "costs.npy"), cost_map)
 
+    # geometric consistency
     for geom_iter in range(args.geom_iterations):
         multi_geometry = geom_iter != 0
         all_depths = []
         all_normals = []
         all_costs = []
         for ref_id in trange(num_images, desc="Loading for geometric consistent"):
-            save_folder = os.path.join(result_folder, args.suffix, f"{ref_id:04}")
+            save_dir = os.path.join(result_dir, args.suffix, f"{ref_id:04}")
             depth_suffix = "depths_geom.npy" if multi_geometry else "depths.npy"
-            all_depths.append(np.load(os.path.join(os.path.join(save_folder, depth_suffix))))
-            all_normals.append(np.load(os.path.join(os.path.join(save_folder, "normals.npy"))))
-            all_costs.append(np.load(os.path.join(os.path.join(save_folder, "costs.npy"))))
+            all_depths.append(np.load(os.path.join(os.path.join(save_dir, depth_suffix))))
+            all_normals.append(np.load(os.path.join(os.path.join(save_dir, "normals.npy"))))
+            all_costs.append(np.load(os.path.join(os.path.join(save_dir, "costs.npy"))))
         pmmvs.load_geometry(all_depths, all_normals, all_costs)
 
         # set geometry consistency parameters
@@ -112,23 +123,25 @@ if __name__ == "__main__":
         all_normals = []
         for ref_id in trange(num_images, desc="Geometric consistent"):
             depth_map, normal_map, cost_map = _C.process_problem(
-                result_folder, problems[ref_id], True, False, multi_geometry, pmmvs
+                result_dir, problems[ref_id], True, False, multi_geometry, pmmvs
             )
-            save_folder = os.path.join(result_folder, args.suffix, f"{ref_id:04}")
-            os.makedirs(save_folder, exist_ok=True)
-            np.save(os.path.join(save_folder, "depths_geom.npy"), depth_map)
-            np.save(os.path.join(save_folder, "normals.npy"), normal_map)
-            np.save(os.path.join(save_folder, "costs.npy"), cost_map)
+            save_dir = os.path.join(result_dir, args.suffix, f"{ref_id:04}")
+            os.makedirs(save_dir, exist_ok=True)
+            np.save(os.path.join(save_dir, "depths_geom.npy"), depth_map)
+            np.save(os.path.join(save_dir, "normals.npy"), normal_map)
+            np.save(os.path.join(save_dir, "costs.npy"), cost_map)
             all_depths.append(depth_map)
             all_normals.append(normal_map)
 
+    # run fusion
     depths, normals = _C.run_fusion(
-        result_folder, problems, all_depths, all_normals, True, args.geom_cons
+        result_dir, problems, all_depths, all_normals, True, args.geom_cons
     )
 
-    os.makedirs(os.path.join(result_folder, args.suffix, "depth_normal"), exist_ok=True)
+    # save the inference results (depths and normals)
+    os.makedirs(os.path.join(result_dir, args.suffix, "depth_normal"), exist_ok=True)
     for i, depth, normal in zip(range(num_images), depths, normals):
         depth = depth[..., None]
         depth_normal = np.concatenate([depth, normal], axis=-1)
-        save_file = os.path.join(result_folder, args.suffix, "depth_normal", f"{i:04}.npy")
+        save_file = os.path.join(result_dir, args.suffix, "depth_normal", f"{i:04}.npy")
         np.save(save_file, depth_normal)

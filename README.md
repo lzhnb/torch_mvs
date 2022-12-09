@@ -7,7 +7,7 @@ python setup.py develop
 
 ## Preprocessing
 ```sh
-python -m tmvs.colmap2mvs --dense_folder $DATA_DIR/dense/ --save_folder $RESULT_ROOT
+python -m tmvs.colmap2mvs --colmap_dir $DATA_DIR/dense/ --save_dir $RESULT_ROOT
 ```
 
 ## Extract superpixels
@@ -17,7 +17,7 @@ python -m tmvs.extract_superpixel --img_dir $DATA_DIR/images --save_dir $SUPERPI
 
 ## Running
 ```sh
-python -m tmvs.launch -rf $RESULT_ROOT # --suffix $MVS_SUFFIX)(optional)
+python -m tmvs.launch -rd $RESULT_ROOT # --suffix $MVS_SUFFIX)(optional)
 ```
 
 ## Postprocessing

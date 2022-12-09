@@ -1,7 +1,7 @@
 #include "segmentation.h"
 
 namespace mvs {
-cv::Mat fusion_planar_mask(
+cv::Mat fusion_textureless_mask(
     const cv::Mat& seg_ids,
     const cv::Mat& planar_mask,
     const cv::Mat& filter_normals,
@@ -38,7 +38,7 @@ cv::Mat fusion_planar_mask(
         }
     }
 
-    uint32_t vpsarea_seg_id =
+    uint32_t area_seg_id =
         301;  // too textureless region, where mvs could not handle, segid begin from 301
     cv::Mat fusion_mask = cv::Mat::zeros(rows, cols, CV_32SC1);
     for (int32_t seg_id = 1; seg_id < static_cast<uint32_t>(max_val) + 1; ++seg_id) {
@@ -81,9 +81,9 @@ cv::Mat fusion_planar_mask(
                                                    // handle
             // keep this region
             for (cv::Point2i p : seg_ids_map[seg_id]) {
-                fusion_mask.at<int32_t>(p) = vpsarea_seg_id;
+                fusion_mask.at<int32_t>(p) = area_seg_id;
             }
-            vpsarea_seg_id += 1;
+            area_seg_id += 1;
             skip = true;
         } else {
             skip = false;

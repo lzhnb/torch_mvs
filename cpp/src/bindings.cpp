@@ -60,7 +60,7 @@ PYBIND11_MODULE(EXTENSION_NAME, m) {
     m.def("run_fusion", &run_fusion);
 
     // segmentation
-    m.def("fusion_planar_mask", &mvs::fusion_planar_mask);
+    m.def("fusion_textureless_mask", &mvs::fusion_textureless_mask);
     m.def("filter_by_var_map", &filter_by_var_map);
 }
 
