@@ -24,5 +24,5 @@ python -m tmvs.launch -rd $RESULT_ROOT # --suffix $MVS_SUFFIX)(optional)
 ```sh
 python -m tmvs.mvs_fusion_segmentaion --depth_normal_dir $MVS_DIR/depth_normal/ \
         --data_dir $DATA_DIR --superpixel_dir $SUPERPIXEL_DIR/ \
-        --save_dir $MVS_DIR/planar_prior/ --vis --clean_mesh # (--gen_mask --mask_suffix planar_mask_mvs) for init 
+        --save_dir $MVS_DIR/textureless_prior/ --vis --clean_mesh # (--gen_mask --mask_suffix textureless_mask_mvs) for init 
 ```

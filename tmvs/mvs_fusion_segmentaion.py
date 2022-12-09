@@ -373,7 +373,9 @@ if __name__ == "__main__":
         filter_depth[np.where(filter_depth < 0.05)] = 0
 
         if args.clean_mesh:
-            np.save(os.path.join(save_dir, "textureless_normal_clean", f"{prefix}.npy"), filter_normal)
+            np.save(
+                os.path.join(save_dir, "textureless_normal_clean", f"{prefix}.npy"), filter_normal
+            )
         else:
             np.save(os.path.join(save_dir, "textureless_normal", f"{prefix}.npy"), filter_normal)
 

@@ -3,24 +3,23 @@
 namespace mvs {
 cv::Mat fusion_textureless_mask(
     const cv::Mat& seg_ids,
-    const cv::Mat& planar_mask,
+    const cv::Mat& textureless_mask,
     const cv::Mat& filter_normals,
     const int32_t rows,
     const int32_t cols,
-    const int32_t thresh          = 100,
-    const float nonplanar_percent = 0.75,
-    // matching paramters
-    const float cos_sim_thresh     = 0.8f,
-    const float match_ratio_thresh = 0.9f) {
+    const int32_t thresh                = 100,
+    const float non_textureless_percent = 0.75,
+    const float cos_sim_thresh          = 0.8f,
+    const float match_ratio_thresh      = 0.9f) {
     double min_val, max_val;
     cv::minMaxLoc(seg_ids, &min_val, &max_val);
 
     vector<vector<cv::Vec3f>> seg_normals;
     vector<vector<cv::Point2i>> seg_ids_map;
-    vector<cv::Point2i> seg_ids_planar_count;
+    vector<cv::Point2i> seg_ids_textureless_count;
     seg_normals.resize(static_cast<uint32_t>(max_val) + 1);
     seg_ids_map.resize(static_cast<uint32_t>(max_val) + 1);
-    seg_ids_planar_count.resize(static_cast<uint32_t>(max_val) + 1);
+    seg_ids_textureless_count.resize(static_cast<uint32_t>(max_val) + 1);
 
     // fullfill the seg_ids_map
     for (uint32_t row = 0; row < rows; ++row) {
@@ -28,38 +27,37 @@ cv::Mat fusion_textureless_mask(
             const cv::Point2i p(col, row);
             const int32_t seg_id = seg_ids.at<int32_t>(p);
             seg_ids_map[seg_id].push_back(p);
-            if (planar_mask.at<int32_t>(p) == 0) {  // nonplanar region
-                ++seg_ids_planar_count[seg_id].x;
+            if (textureless_mask.at<int32_t>(p) == 0) {  // non-textureless region
+                ++seg_ids_textureless_count[seg_id].x;
                 // statistic normals
                 seg_normals[seg_id].push_back(filter_normals.at<cv::Vec3f>(p));
-            } else {  // planar region
-                ++seg_ids_planar_count[seg_id].y;
+            } else {  // textureless region
+                ++seg_ids_textureless_count[seg_id].y;
             }
         }
     }
 
-    uint32_t area_seg_id =
-        301;  // too textureless region, where mvs could not handle, segid begin from 301
-    cv::Mat fusion_mask = cv::Mat::zeros(rows, cols, CV_32SC1);
+    // too textureless region, where mvs could not handle, segid begin from 301
+    uint32_t area_seg_id = 301;
+    cv::Mat fusion_mask  = cv::Mat::zeros(rows, cols, CV_32SC1);
     for (int32_t seg_id = 1; seg_id < static_cast<uint32_t>(max_val) + 1; ++seg_id) {
-        const float nonplanar = static_cast<float>(seg_ids_planar_count[seg_id].x);
-        const float planar    = static_cast<float>(seg_ids_planar_count[seg_id].y);
-        const float amount    = nonplanar + planar;
-        // filter out the small superpixels
-        // filter out the small, useless(too many nonplanar) superpixels
+        const float non_textureless = static_cast<float>(seg_ids_textureless_count[seg_id].x);
+        const float textureless     = static_cast<float>(seg_ids_textureless_count[seg_id].y);
+        const float amount          = non_textureless + textureless;
+        // filter out the small, useless(too many non_textureless) superpixels
         if (amount <= thresh) {
             continue;
         }
         bool skip = false;
-        // filter out the truly nonplanar superpixels
-        if ((nonplanar / amount) >= nonplanar_percent) {
+        // filter out the truly non_textureless superpixels
+        if ((non_textureless / amount) >= non_textureless_percent) {
             skip = true;
             // calculate the average normal
             cv::Vec3f avg_n(0.0f, 0.0f, 0.0f);
             for (cv::Vec3f n : seg_normals[seg_id]) {
                 avg_n += n;
             }
-            avg_n /= nonplanar;
+            avg_n /= non_textureless;
 
             // count the number of the normals that match the average normal
             int32_t valid = 0;
@@ -67,19 +65,18 @@ cv::Mat fusion_textureless_mask(
                 const float cos_sim = avg_n.dot(n);
                 valid += (cos_sim > cos_sim_thresh ? 1 : 0);
             }
-            // define the superpixel as planar superpixel if there are enough normals matching the
-            // average normal, and vice versa
-            const float ratio = static_cast<float>(valid) / nonplanar;
-            if (ratio > match_ratio_thresh) {  // too many planar
+            // define the superpixel as textureless superpixel if there are enough
+            // normals matching the average normal, and vice versa
+            const float ratio = static_cast<float>(valid) / non_textureless;
+            if (ratio > match_ratio_thresh) {  // too many textureless area
                 skip = false;
             } else {  // really object
                 for (cv::Point2i p : seg_ids_map[seg_id]) {
                     fusion_mask.at<int32_t>(p) = 300;
                 }
             }
-        } else if ((nonplanar / amount) < 0.25) {  // too textureless region, where mvs could not
-                                                   // handle
-            // keep this region
+        } else if ((non_textureless / amount) < 0.25) {
+            // too textureless region, where mvs could not hanle keep this region
             for (cv::Point2i p : seg_ids_map[seg_id]) {
                 fusion_mask.at<int32_t>(p) = area_seg_id;
             }
@@ -88,7 +85,7 @@ cv::Mat fusion_textureless_mask(
         } else {
             skip = false;
         }
-        // skip the superpixel whose normals are not quite consistent(not planar)
+        // skip the superpixel whose normals are not quite consistent(non textureless)
         if (skip) {
             continue;
         }
