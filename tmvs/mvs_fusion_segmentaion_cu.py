@@ -218,9 +218,9 @@ if __name__ == "__main__":
     for pose_file, depth_normal_file in tqdm(
         zip(pose_list, depth_normal_list), desc="loading poses and depth&normal"
     ):
-        all_poses.append(torch.from_numpy(np.loadtxt(os.path.join(data_dir, "pose", pose_file))))
+        all_poses.append(torch.from_numpy(np.loadtxt(os.path.join(data_dir, "pose", pose_file))).float())
         all_depth_normals.append(
-            torch.from_numpy(np.load(os.path.join(depth_normal_dir, depth_normal_file)))
+            torch.from_numpy(np.load(os.path.join(depth_normal_dir, depth_normal_file))).float()
         )
     all_poses = torch.stack(all_poses).to(device)
     all_depth_normals = torch.stack(all_depth_normals).to(device)
@@ -252,7 +252,7 @@ if __name__ == "__main__":
     for idx, extrinsic in tqdm(enumerate(all_poses), desc="gather mvs points"):
         # get extrinsic (pose) and generate the origins and directions
         origins = extrinsic[:3, 3]  # [3]
-        origins = np.tile(origins, (height * width, 1))  # [H * W, 3]
+        origins = torch.tile(origins, (height * width, 1))  # [H * W, 3]
         rot_mat = extrinsic[:3, :3]
         dirs = dirs_ @ (rot_mat.T)  # [H * W, 3]
 
@@ -309,8 +309,6 @@ if __name__ == "__main__":
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points_normals[:, :3])
     pcd.normals = o3d.utility.Vector3dVector(points_normals[:, 3:])
-    del points_all
-    del points_all_filter
 
     # Poisson reconstruction
     with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Debug) as cm:
@@ -356,6 +354,9 @@ if __name__ == "__main__":
                 fmt="%.4f",
             )
 
+    del points_all
+    del points_all_filter
+
     """render and fusion mask"""
     vertices = np.asarray(mesh_poisson.vertices)
     faces = np.asarray(mesh_poisson.triangles)
@@ -375,7 +376,7 @@ if __name__ == "__main__":
 
         # get the camera extrinsic to get the view direction for ray casting
         origins = extrinsic[:3, 3]  # [3]
-        origins = np.tile(origins, (height * width, 1))  # [H * W, 3]
+        origins = torch.tile(origins, (height * width, 1))  # [H * W, 3]
         rot_mat = extrinsic[:3, :3]
         dirs = dirs_ @ (rot_mat.T)  # [H * W, 3]
 
