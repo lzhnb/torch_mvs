@@ -26,12 +26,6 @@ def get_args() -> argparse.Namespace:
         help="directory to store the MVS's depth and normal",
     )
     parser.add_argument(
-        "--ray_mask_dir",
-        type=str,
-        default=None,
-        help="directory to store ray masks",
-    )
-    parser.add_argument(
         "--data_dir",
         type=str,
         required=True,
@@ -52,32 +46,38 @@ def get_args() -> argparse.Namespace:
         help="directory to store the output results",
     )
     parser.add_argument(
+        "--ray_mask_dir",
+        type=str,
+        default=None,
+        help="directory to store ray masks",
+    )
+    parser.add_argument(
         "--fliter_angle_thresh",
         type=float,
         default=70,
-        help="save visualization",
+        help="the angle threshold to filter the points whose normals away from the view directions",
     )
     parser.add_argument(
         "--clean_mesh",
         action="store_true",
-        help="save visualization",
+        help="clean the mesh (remove isolate components) or not",
     )
     parser.add_argument(
         "--clean_mesh_percentage",
         type=float,
         default=0.05,
-        help="save visualization",
+        help="the percentage (isolate component ratio threshold) to clean mesh",
     )
     parser.add_argument(
         "--gen_mask",
         action="store_true",
-        help="save visualization",
+        help="generate fusion mask (fusion textureless areas and superpixels) or not",
     )
     parser.add_argument(
         "--mask_suffix",
         type=str,
         default="textureless_mask",
-        help="directory suffix to save visualization",
+        help="directory suffix to save generated fusion mask",
     )
     parser.add_argument("--height", type=int, default=480, help="the height of input images")
     parser.add_argument("--width", type=int, default=640, help="the width of input images")
