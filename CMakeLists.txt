@@ -15,7 +15,12 @@ add_subdirectory(dependencies/pybind11)
 cuda_add_library(
     libmvs SHARED
     cpp/src/bindings.cpp
-    cpp/src/ndarray_converter.cpp)
+    cpp/src/ndarray_converter.cpp
+    cpp/src/mvs.cpp
+    cpp/src/patch_match.cu
+    cpp/src/fusion.cu
+    cpp/src/segmentation.cu
+    cpp/src/launch.cpp)
 
 target_include_directories(
     libmvs PRIVATE
